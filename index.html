@@ -2,7 +2,13 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RyuShet">
+<meta name="theme-color" content="#07080d">
+<link rel="manifest" id="pwaManifest">
 <title>RyuShet — AI Interface</title>
 <script src="https://js.puter.com/v2/"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -995,12 +1001,199 @@ select.fi { appearance: none; -webkit-appearance: none; cursor: pointer; }
 .btn-d { background: var(--err); color: white; }
 .btn-d:hover { filter: brightness(1.1); }
 
-/* ── RESPONSIVE ── */
-@media(max-width:900px) { .sidebar,.rpanel { display: none; } }
+/* ════════════════════════════════════════
+   RESPONSIVE MÓVIL COMPLETO
+════════════════════════════════════════ */
+
+/* Tablet */
+@media(max-width:900px) {
+  .sidebar { display: none; }
+  .rpanel  { display: none; }
+  .layout  { grid-template-columns: 1fr; }
+}
+
+/* Móvil */
 @media(max-width:600px) {
+  /* Header compacto */
   .hdr-center { display: none; }
-  .msgs { padding: 12px; }
-  .bub { max-width: 85%; }
+  .topbar { padding: 8px 12px; gap: 8px; }
+  .brand-name { font-size: .9rem; }
+  .icon-btn { width: 28px; height: 28px; font-size: 12px; }
+  .user-chip { padding: 3px 8px 3px 6px; font-size: .7rem; }
+  .user-chip .av-mini { width: 20px; height: 20px; }
+
+  /* Chat area */
+  .msgs { padding: 10px; gap: 10px; }
+  .msg > div:last-child { max-width: 88%; }
+  .bub { padding: 10px 12px; font-size: .84rem; }
+  .av  { width: 28px; height: 28px; font-size: .7rem; flex-shrink: 0; }
+
+  /* Welcome screen */
+  .welcome { padding: 16px; gap: 16px; }
+  .wl-glyph { font-size: 2.5rem; }
+  .wl-title { font-size: 1.5rem; }
+  .wl-sub   { font-size: .7rem; }
+  .quick-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .qp-card { padding: 12px 8px; }
+  .qp-icon { font-size: 1rem; }
+  .qp-text { font-size: .68rem; }
+
+  /* Input zone */
+  .input-zone { padding: 8px 10px 12px; }
+  .tools-row  { gap: 4px; overflow-x: auto; padding-bottom: 4px; flex-wrap: nowrap; }
+  .tool-chip  { font-size: .58rem; padding: 4px 8px; white-space: nowrap; flex-shrink: 0; }
+  .inp-row    { gap: 6px; }
+  .img-btn    { width: 36px; height: 36px; font-size: 15px; flex-shrink: 0; }
+  .send       { width: 36px; height: 36px; font-size: 14px; flex-shrink: 0; }
+  #inp        { font-size: .85rem; }
+  .inp-hint   { font-size: .58rem; display: none; } /* oculto en móvil */
+  .img-preview-bar img { width: 36px; height: 36px; }
+
+  /* Modales */
+  .modal { padding: 20px; width: 95vw; margin: 0 auto; }
+  .auth-card { padding: 24px 20px; }
+  .owner-modal { width: 96vw; }
+
+  /* Vision modal */
+  .vision-panel {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto auto;
+    height: 96vh;
+    width: 98vw;
+  }
+  .vision-right { display: none; } /* Oculto en móvil — solo cámara */
+  .vision-controls { flex-wrap: wrap; gap: 6px; }
+  .v-btn { font-size: .62rem; padding: 7px 10px; }
+
+  /* Bottom nav móvil */
+  #mobileNav {
+    display: flex;
+  }
+}
+
+/* Bottom navigation bar — solo móvil */
+#mobileNav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: var(--bg1);
+  border-top: 1px solid var(--line2);
+  z-index: 500;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px;
+  backdrop-filter: blur(10px);
+}
+.mob-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  color: var(--t2);
+  font-size: .5rem;
+  font-family: var(--mono);
+  letter-spacing: .04em;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  transition: all var(--trans);
+  text-transform: uppercase;
+}
+.mob-nav-btn .mob-icon { font-size: 1.2rem; }
+.mob-nav-btn.active, .mob-nav-btn:hover { color: var(--a3); }
+.mob-nav-btn.active .mob-icon { filter: drop-shadow(0 0 4px var(--a3)); }
+
+/* Sidebar móvil — slide in */
+#mobileSidebar {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+}
+#mobileSidebar.open { display: block; }
+.mob-sidebar-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(4px);
+}
+.mob-sidebar-panel {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 280px;
+  background: var(--bg1);
+  border-right: 1px solid var(--line2);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  animation: slideRight .2s ease;
+}
+@keyframes slideRight { from{transform:translateX(-100%)} to{transform:none} }
+.mob-sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: .75rem;
+  color: var(--t1);
+}
+
+/* Ajuste para nav bar en móvil */
+@media(max-width:600px) {
+  .layout { padding-bottom: 56px; }
+  .input-zone { padding-bottom: 68px; }
+}
+
+/* PWA install banner */
+#installBanner {
+  display: none;
+  position: fixed;
+  bottom: 64px;
+  left: 12px; right: 12px;
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  z-index: 600;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--sh-lg);
+  animation: slideUp .3s ease;
+}
+#installBanner.show { display: flex; }
+@keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+.install-icon { font-size: 1.8rem; flex-shrink: 0; }
+.install-text { flex: 1; }
+.install-title { font-size: .82rem; font-weight: 600; color: var(--t0); margin-bottom: 2px; }
+.install-sub   { font-size: .68rem; color: var(--t2); font-family: var(--mono); }
+.install-btns  { display: flex; flex-direction: column; gap: 4px; }
+.install-yes {
+  padding: 7px 14px;
+  background: var(--a3);
+  border: none;
+  border-radius: var(--r-sm);
+  color: #000;
+  font-size: .72rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--mono);
+}
+.install-no {
+  padding: 4px;
+  background: none;
+  border: none;
+  color: var(--t2);
+  font-size: .65rem;
+  cursor: pointer;
+  font-family: var(--mono);
+  text-align: center;
 }
 
 /* ── VOZ ── */
@@ -1754,8 +1947,8 @@ select.fi { appearance: none; -webkit-appearance: none; cursor: pointer; }
           <div class="owner-stat-l">Usuarios</div>
         </div>
         <div class="owner-stat">
-          <div class="owner-stat-n" id="ownerTotalSessions">0</div>
-          <div class="owner-stat-l">Sesiones</div>
+          <div class="owner-stat-n" id="ownerActiveSessions">0</div>
+          <div class="owner-stat-l">Activos hoy</div>
         </div>
         <div class="owner-stat">
           <div class="owner-stat-n" id="ownerTotalMsgs">0</div>
@@ -1768,7 +1961,8 @@ select.fi { appearance: none; -webkit-appearance: none; cursor: pointer; }
             <th>Usuario</th>
             <th>Correo</th>
             <th>Rol</th>
-            <th>Registro</th>
+            <th>Último acceso</th>
+            <th>Msgs</th>
             <th></th>
           </tr>
         </thead>
@@ -2072,6 +2266,61 @@ select.fi { appearance: none; -webkit-appearance: none; cursor: pointer; }
 <!-- TOASTS -->
 <div id="toasts"></div>
 
+<!-- MOBILE BOTTOM NAV -->
+<nav id="mobileNav">
+  <button class="mob-nav-btn active" id="mobBtnChat" onclick="mobNav('chat')">
+    <span class="mob-icon">💬</span>Chat
+  </button>
+  <button class="mob-nav-btn" id="mobBtnNew" onclick="mobNav('new')">
+    <span class="mob-icon">＋</span>Nuevo
+  </button>
+  <button class="mob-nav-btn" id="mobBtnVision" onclick="mobNav('vision')">
+    <span class="mob-icon">👁️</span>Vision
+  </button>
+  <button class="mob-nav-btn" id="mobBtnMic" onclick="startListening()">
+    <span class="mob-icon">🎤</span>Voz
+  </button>
+  <button class="mob-nav-btn" id="mobBtnMenu" onclick="mobNav('menu')">
+    <span class="mob-icon">☰</span>Menú
+  </button>
+</nav>
+
+<!-- MOBILE SIDEBAR (sessions + settings) -->
+<div id="mobileSidebar">
+  <div class="mob-sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+  <div class="mob-sidebar-panel">
+    <div class="mob-sidebar-header">
+      <span>⚡ RyuShet</span>
+      <button onclick="closeMobileSidebar()" style="background:none;border:none;color:var(--t2);font-size:1rem;cursor:pointer">✕</button>
+    </div>
+    <!-- Sessions list -->
+    <div style="padding:12px;border-bottom:1px solid var(--line)">
+      <button class="new-btn" onclick="S.activeId=null;clearUI();closeMobileSidebar()">＋ &nbsp;New Chat</button>
+    </div>
+    <div id="mobSessionsList" style="flex:1;overflow-y:auto;padding:8px"></div>
+    <!-- Actions -->
+    <div style="padding:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px">
+      <button class="action-btn" onclick="openSettings();closeMobileSidebar()">⚙️ Settings</button>
+      <button class="action-btn" onclick="exportChat();closeMobileSidebar()">💾 Exportar chat</button>
+      <button class="action-btn" id="mobInstallBtn" onclick="triggerInstall()" style="display:none">📲 Instalar app</button>
+      <button class="action-btn" onclick="onUserChipClick();closeMobileSidebar()">👤 Mi cuenta</button>
+    </div>
+  </div>
+</div>
+
+<!-- PWA INSTALL BANNER -->
+<div id="installBanner">
+  <div class="install-icon">📲</div>
+  <div class="install-text">
+    <div class="install-title">Instalar RyuShet</div>
+    <div class="install-sub">Úsalo como app en tu celular — sin internet extra</div>
+  </div>
+  <div class="install-btns">
+    <button class="install-yes" onclick="triggerInstall()">Instalar</button>
+    <button class="install-no" onclick="dismissInstall()">Ahora no</button>
+  </div>
+</div>
+
 <div class="overlay" id="modalSettings" style="display:none">
   <div class="modal">
     <div class="modal-title">⚙️ RyuShet — Settings</div>
@@ -2193,6 +2442,10 @@ const AUTH = {
     const user = db[email.toLowerCase().trim()];
     if (!user) return { ok: false, msg: 'Correo no registrado.' };
     if (user.passHash !== this.hash(password)) return { ok: false, msg: 'Contraseña incorrecta.' };
+    // Registrar último acceso
+    user.lastLogin = Date.now();
+    db[user.email] = user;
+    this.saveDB(db);
     this.currentUser = user;
     localStorage.setItem('ryushet_session', JSON.stringify({ email: user.email }));
     return { ok: true };
@@ -2206,13 +2459,14 @@ const AUTH = {
     const db = this.getDB();
     if (db[em]) return { ok: false, msg: 'Este correo ya está registrado.' };
     const user = {
-      email:    em,
-      name:     name.trim(),
-      passHash: this.hash(password),
-      role:     em === OWNER_EMAIL ? 'owner' : 'user',
-      created:  Date.now(),
-      msgs:     0,
-      sessions: 0,
+      email:     em,
+      name:      name.trim(),
+      passHash:  this.hash(password),
+      role:      em === OWNER_EMAIL ? 'owner' : 'user',
+      created:   Date.now(),
+      lastLogin: Date.now(),
+      msgs:      0,
+      sessions:  0,
     };
     db[em] = user;
     this.saveDB(db);
@@ -2409,21 +2663,36 @@ function onUserChipClick() {
 // ─── OWNER PANEL ─────────────────────────────────────────────────
 function openOwnerPanel() {
   const users = AUTH.getAllUsers();
-  const totalMsgs = users.reduce((a,u) => a + (u.msgs||0), 0);
+  const now   = Date.now();
+  const today = new Date().toDateString();
+  const totalMsgs    = users.reduce((a,u) => a + (u.msgs||0), 0);
+  const activeToday  = users.filter(u => u.lastLogin && new Date(u.lastLogin).toDateString() === today).length;
+
   document.getElementById('ownerTotalUsers').textContent    = users.length;
-  document.getElementById('ownerTotalSessions').textContent = S.sessions.length;
+  document.getElementById('ownerActiveSessions').textContent= activeToday;
   document.getElementById('ownerTotalMsgs').textContent     = totalMsgs;
 
   const tbody = document.getElementById('ownerUsersTable');
-  tbody.innerHTML = users.map(u => `
+  tbody.innerHTML = users.map(u => {
+    const lastLogin = u.lastLogin
+      ? new Date(u.lastLogin).toLocaleString([], {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})
+      : 'Nunca';
+    const isOnline = u.lastLogin && (now - u.lastLogin) < 5 * 60 * 1000; // activo últimos 5 min
+    return `
     <tr>
-      <td><strong>${esc(u.name)}</strong></td>
-      <td style="font-family:var(--mono);font-size:.72rem;color:var(--t2)">${esc(u.email)}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${isOnline ? '<span style="width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block;box-shadow:0 0 6px var(--ok)"></span>' : '<span style="width:7px;height:7px;border-radius:50%;background:var(--t3);display:inline-block"></span>'}
+          <strong style="color:var(--t0)">${esc(u.name)}</strong>
+        </div>
+      </td>
+      <td style="font-family:var(--mono);font-size:.7rem;color:var(--a3)">${esc(u.email)}</td>
       <td><span class="user-role-badge ${u.role}">${u.role}</span></td>
-      <td style="font-size:.72rem;color:var(--t2)">${new Date(u.created).toLocaleDateString()}</td>
+      <td style="font-size:.68rem;color:var(--t2);font-family:var(--mono)">${lastLogin}</td>
+      <td style="font-family:var(--mono);color:var(--t1);text-align:center">${u.msgs||0}</td>
       <td>${u.role!=='owner' ? `<button class="del-user-btn" onclick="ownerDeleteUser('${u.email}')">Eliminar</button>` : '—'}</td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 
   document.getElementById('ownerPanel').classList.add('open');
 }
@@ -4002,7 +4271,104 @@ function vMethodToChat(idx) {
 // ── Pre-load Tesseract ─────────────────────────────────────────
 setTimeout(() => vInitTesseract().catch(()=>{}), 2000);
 
+// ═══════════════════════════════════════════════════════════════
+//  MOBILE NAV + PWA
+// ═══════════════════════════════════════════════════════════════
+
+function mobNav(tab) {
+  document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
+  if (tab === 'chat') {
+    document.getElementById('mobBtnChat').classList.add('active');
+  } else if (tab === 'new') {
+    S.activeId = null; clearUI();
+    document.getElementById('mobBtnChat').classList.add('active');
+  } else if (tab === 'vision') {
+    openVision();
+    document.getElementById('mobBtnVision').classList.add('active');
+  } else if (tab === 'menu') {
+    openMobileSidebar();
+    document.getElementById('mobBtnMenu').classList.add('active');
+  }
+}
+
+function openMobileSidebar() {
+  // Sync sessions list
+  const mob = document.getElementById('mobSessionsList');
+  mob.innerHTML = S.sessions.length
+    ? S.sessions.map(s => `
+        <div style="padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:${s.id===S.activeId?'rgba(0,229,176,.08)':'transparent'};border:1px solid ${s.id===S.activeId?'rgba(0,229,176,.2)':'transparent'}"
+             onclick="loadSession('${s.id}');closeMobileSidebar()">
+          <div style="font-size:.8rem;color:var(--t0);font-weight:500">${roleEmoji(s.role)} ${esc(s.title)}</div>
+          <div style="font-size:.65rem;color:var(--t2);font-family:var(--mono);margin-top:2px">${s.msgs} msgs</div>
+        </div>`)
+      .join('')
+    : '<div style="padding:12px;color:var(--t2);font-family:var(--mono);font-size:.72rem;text-align:center">Sin conversaciones aún</div>';
+  document.getElementById('mobileSidebar').classList.add('open');
+}
+
+function closeMobileSidebar() {
+  document.getElementById('mobileSidebar').classList.remove('open');
+  document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('mobBtnChat').classList.add('active');
+}
+
+// ── PWA Install ────────────────────────────────────────────────
+let deferredInstall = null;
+
+// Generar manifest dinámico
+function injectPWAManifest() {
+  const manifest = {
+    name: 'RyuShet',
+    short_name: 'RyuShet',
+    description: 'Advanced AI Interface',
+    start_url: './',
+    display: 'standalone',
+    background_color: '#07080d',
+    theme_color: '#07080d',
+    orientation: 'portrait-primary',
+    icons: [
+      { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="%2307080d"/><text y="140" font-size="120" x="20">⚡</text></svg>', sizes: '192x192', type: 'image/svg+xml' },
+      { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="%2307080d"/><text y="380" font-size="320" x="50">⚡</text></svg>', sizes: '512x512', type: 'image/svg+xml' },
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  document.getElementById('pwaManifest').href = url;
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstall = e;
+  // Mostrar banner si es móvil
+  if (window.innerWidth <= 600) {
+    setTimeout(() => document.getElementById('installBanner').classList.add('show'), 3000);
+  }
+  document.getElementById('mobInstallBtn').style.display = 'block';
+});
+
+function triggerInstall() {
+  if (!deferredInstall) {
+    toast('Para instalar: menú del navegador → "Añadir a pantalla de inicio"', 'info', 5000);
+    return;
+  }
+  deferredInstall.prompt();
+  deferredInstall.userChoice.then(r => {
+    if (r.outcome === 'accepted') toast('RyuShet instalado ✓', 'ok');
+    dismissInstall();
+  });
+}
+
+function dismissInstall() {
+  document.getElementById('installBanner').classList.remove('show');
+}
+
+window.addEventListener('appinstalled', () => {
+  toast('RyuShet instalado como app ✓', 'ok', 3000);
+  dismissInstall();
+});
+
 // ─── INIT ────────────────────────────────────────────────────────
+injectPWAManifest();
 fetchModels();
 D.ttsBtn.classList.toggle('tts-on', CFG.ttsEnabled);
 D.ttsBtn.textContent = CFG.ttsEnabled ? '🔊' : '🔇';
