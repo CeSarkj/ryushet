@@ -12,6 +12,9 @@
 <title>RyuShet — AI Interface</title>
 <script src="https://js.puter.com/v2/"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
 
@@ -2379,100 +2382,115 @@ select.fi { appearance: none; -webkit-appearance: none; cursor: pointer; }
 //  Cuenta owner: acostagarciacesarjoel105@gmail.com
 // ═══════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════
+//  FIREBASE CONFIG
+// ═══════════════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "AIzaSyC5W6sM3Q482OK1KGB3zuHFldCIIBAdk8A",
+  authDomain:        "ryushet-bbaab.firebaseapp.com",
+  projectId:         "ryushet-bbaab",
+  storageBucket:     "ryushet-bbaab.firebasestorage.app",
+  messagingSenderId: "1076293590448",
+  appId:             "1:1076293590448:web:0cf57b94cd1eb64d208a75"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ═══════════════════════════════════════════════════════════════
+//  SISTEMA DE AUTENTICACIÓN — Firebase Firestore
+//  Todos los usuarios se guardan en la nube.
+//  El owner puede ver todos desde cualquier dispositivo.
+// ═══════════════════════════════════════════════════════════════
+
 const OWNER_EMAIL = 'acostagarciacesarjoel105@gmail.com';
-const OWNER_PASS  = 'RyuShet2026!'; // contraseña inicial del owner — cámbiala en producción
+const OWNER_PASS  = 'RyuShet2026!';
 
 const AUTH = {
   currentUser: null,
 
-  // Cargar DB de usuarios desde localStorage
-  getDB() {
-    try {
-      const raw = localStorage.getItem('ryushet_users');
-      return raw ? JSON.parse(raw) : {};
-    } catch(e) { return {}; }
-  },
-
-  // Guardar DB
-  saveDB(db) {
-    try { localStorage.setItem('ryushet_users', JSON.stringify(db)); } catch(e) {}
-  },
-
-  // Hash simple (no usar en producción real — para demo)
   hash(str) {
     let h = 0;
-    for (let i = 0; i < str.length; i++) {
-      h = Math.imul(31, h) + str.charCodeAt(i) | 0;
-    }
+    for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
     return h.toString(36);
   },
 
-  // Inicializar — crear cuenta owner si no existe
-  init() {
-    const db = this.getDB();
-    if (!db[OWNER_EMAIL]) {
-      db[OWNER_EMAIL] = {
-        email:    OWNER_EMAIL,
-        name:     'César Joel',
-        passHash: this.hash(OWNER_PASS),
-        role:     'owner',
-        created:  Date.now(),
-        msgs:     0,
-        sessions: 0,
-      };
-      this.saveDB(db);
-    }
-    // Restaurar sesión activa
+  async init() {
+    // Crear owner en Firestore si no existe
+    try {
+      const ownerRef = db.collection('users').doc(OWNER_EMAIL);
+      const ownerDoc = await ownerRef.get();
+      if (!ownerDoc.exists) {
+        await ownerRef.set({
+          email:     OWNER_EMAIL,
+          name:      'César Joel',
+          passHash:  this.hash(OWNER_PASS),
+          role:      'owner',
+          created:   Date.now(),
+          lastLogin: Date.now(),
+          msgs:      0,
+        });
+      }
+    } catch(e) { console.warn('Firebase init:', e.message); }
+
+    // Restaurar sesión local
     try {
       const saved = localStorage.getItem('ryushet_session');
       if (saved) {
-        const s = JSON.parse(saved);
-        const db2 = this.getDB();
-        if (db2[s.email]) {
-          this.currentUser = db2[s.email];
-          return true; // ya autenticado
+        const s   = JSON.parse(saved);
+        const doc = await db.collection('users').doc(s.email).get();
+        if (doc.exists) {
+          this.currentUser = doc.data();
+          // Actualizar lastLogin
+          await db.collection('users').doc(s.email).update({ lastLogin: Date.now() });
+          return true;
         }
       }
     } catch(e) {}
     return false;
   },
 
-  login(email, password) {
-    const db = this.getDB();
-    const user = db[email.toLowerCase().trim()];
-    if (!user) return { ok: false, msg: 'Correo no registrado.' };
-    if (user.passHash !== this.hash(password)) return { ok: false, msg: 'Contraseña incorrecta.' };
-    // Registrar último acceso
-    user.lastLogin = Date.now();
-    db[user.email] = user;
-    this.saveDB(db);
-    this.currentUser = user;
-    localStorage.setItem('ryushet_session', JSON.stringify({ email: user.email }));
-    return { ok: true };
+  async login(email, password) {
+    try {
+      const em  = email.toLowerCase().trim();
+      const doc = await db.collection('users').doc(em).get();
+      if (!doc.exists) return { ok: false, msg: 'Correo no registrado.' };
+      const user = doc.data();
+      if (user.passHash !== this.hash(password)) return { ok: false, msg: 'Contraseña incorrecta.' };
+      // Actualizar lastLogin
+      await db.collection('users').doc(em).update({ lastLogin: Date.now() });
+      user.lastLogin = Date.now();
+      this.currentUser = user;
+      localStorage.setItem('ryushet_session', JSON.stringify({ email: em }));
+      return { ok: true };
+    } catch(e) {
+      return { ok: false, msg: 'Error de conexión: ' + e.message };
+    }
   },
 
-  register(name, email, password) {
-    if (!name.trim())  return { ok: false, msg: 'El nombre es requerido.' };
+  async register(name, email, password) {
+    if (!name.trim())         return { ok: false, msg: 'El nombre es requerido.' };
     if (!email.includes('@')) return { ok: false, msg: 'Correo inválido.' };
-    if (password.length < 6) return { ok: false, msg: 'La contraseña debe tener al menos 6 caracteres.' };
-    const em = email.toLowerCase().trim();
-    const db = this.getDB();
-    if (db[em]) return { ok: false, msg: 'Este correo ya está registrado.' };
-    const user = {
-      email:     em,
-      name:      name.trim(),
-      passHash:  this.hash(password),
-      role:      em === OWNER_EMAIL ? 'owner' : 'user',
-      created:   Date.now(),
-      lastLogin: Date.now(),
-      msgs:      0,
-      sessions:  0,
-    };
-    db[em] = user;
-    this.saveDB(db);
-    this.currentUser = user;
-    localStorage.setItem('ryushet_session', JSON.stringify({ email: em }));
-    return { ok: true };
+    if (password.length < 6)  return { ok: false, msg: 'Contraseña mínimo 6 caracteres.' };
+    try {
+      const em  = email.toLowerCase().trim();
+      const doc = await db.collection('users').doc(em).get();
+      if (doc.exists) return { ok: false, msg: 'Este correo ya está registrado.' };
+      const user = {
+        email:     em,
+        name:      name.trim(),
+        passHash:  this.hash(password),
+        role:      em === OWNER_EMAIL ? 'owner' : 'user',
+        created:   Date.now(),
+        lastLogin: Date.now(),
+        msgs:      0,
+      };
+      await db.collection('users').doc(em).set(user);
+      this.currentUser = user;
+      localStorage.setItem('ryushet_session', JSON.stringify({ email: em }));
+      return { ok: true };
+    } catch(e) {
+      return { ok: false, msg: 'Error: ' + e.message };
+    }
   },
 
   logout() {
@@ -2480,32 +2498,31 @@ const AUTH = {
     localStorage.removeItem('ryushet_session');
   },
 
-  isOwner() {
-    return this.currentUser?.role === 'owner';
-  },
+  isOwner() { return this.currentUser?.role === 'owner'; },
 
-  // Incrementar contador de mensajes del usuario actual
-  trackMsg() {
+  async trackMsg() {
     if (!this.currentUser) return;
-    const db = this.getDB();
-    if (db[this.currentUser.email]) {
-      db[this.currentUser.email].msgs = (db[this.currentUser.email].msgs || 0) + 1;
-      this.saveDB(db);
-      this.currentUser.msgs = db[this.currentUser.email].msgs;
-    }
+    try {
+      await db.collection('users').doc(this.currentUser.email).update({
+        msgs: firebase.firestore.FieldValue.increment(1)
+      });
+      this.currentUser.msgs = (this.currentUser.msgs || 0) + 1;
+    } catch(e) {}
   },
 
-  getAllUsers() {
-    const db = this.getDB();
-    return Object.values(db).sort((a,b) => (a.role==='owner' ? -1 : 1));
+  async getAllUsers() {
+    try {
+      const snap = await db.collection('users').orderBy('created').get();
+      return snap.docs.map(d => d.data()).sort((a,b) => a.role==='owner' ? -1 : 1);
+    } catch(e) { return []; }
   },
 
-  deleteUser(email) {
+  async deleteUser(email) {
     if (email === OWNER_EMAIL) return false;
-    const db = this.getDB();
-    delete db[email];
-    this.saveDB(db);
-    return true;
+    try {
+      await db.collection('users').doc(email).delete();
+      return true;
+    } catch(e) { return false; }
   },
 };
 
@@ -2601,8 +2618,7 @@ async function doLogin() {
   const pass  = document.getElementById('loginPassword').value;
   if (!email || !pass) { setAuthError('Completa todos los campos.'); return; }
   setAuthLoading('loginBtn', true);
-  await new Promise(r => setTimeout(r, 300));
-  const res = AUTH.login(email, pass);
+  const res = await AUTH.login(email, pass);
   setAuthLoading('loginBtn', false);
   if (!res.ok) { setAuthError(res.msg); return; }
   onAuthSuccess();
@@ -2616,8 +2632,7 @@ async function doRegister() {
   if (!name||!email||!pass||!pass2) { setAuthError('Completa todos los campos.'); return; }
   if (pass !== pass2) { setAuthError('Las contraseñas no coinciden.'); return; }
   setAuthLoading('registerBtn', true);
-  await new Promise(r => setTimeout(r, 300));
-  const res = AUTH.register(name, email, pass);
+  const res = await AUTH.register(name, email, pass);
   setAuthLoading('registerBtn', false);
   if (!res.ok) { setAuthError(res.msg); return; }
   onAuthSuccess();
@@ -2661,28 +2676,30 @@ function onUserChipClick() {
 }
 
 // ─── OWNER PANEL ─────────────────────────────────────────────────
-function openOwnerPanel() {
-  const users = AUTH.getAllUsers();
-  const now   = Date.now();
-  const today = new Date().toDateString();
-  const totalMsgs    = users.reduce((a,u) => a + (u.msgs||0), 0);
-  const activeToday  = users.filter(u => u.lastLogin && new Date(u.lastLogin).toDateString() === today).length;
+async function openOwnerPanel() {
+  document.getElementById('ownerPanel').classList.add('open');
+  document.getElementById('ownerUsersTable').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--t2);font-family:var(--mono)">Cargando usuarios…</td></tr>';
 
-  document.getElementById('ownerTotalUsers').textContent    = users.length;
-  document.getElementById('ownerActiveSessions').textContent= activeToday;
-  document.getElementById('ownerTotalMsgs').textContent     = totalMsgs;
+  const users   = await AUTH.getAllUsers();
+  const now     = Date.now();
+  const today   = new Date().toDateString();
+  const totalMsgs   = users.reduce((a,u) => a + (u.msgs||0), 0);
+  const activeToday = users.filter(u => u.lastLogin && new Date(u.lastLogin).toDateString() === today).length;
+
+  document.getElementById('ownerTotalUsers').textContent     = users.length;
+  document.getElementById('ownerActiveSessions').textContent = activeToday;
+  document.getElementById('ownerTotalMsgs').textContent      = totalMsgs;
 
   const tbody = document.getElementById('ownerUsersTable');
   tbody.innerHTML = users.map(u => {
-    const lastLogin = u.lastLogin
+    const lastLogin  = u.lastLogin
       ? new Date(u.lastLogin).toLocaleString([], {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})
       : 'Nunca';
-    const isOnline = u.lastLogin && (now - u.lastLogin) < 5 * 60 * 1000; // activo últimos 5 min
-    return `
-    <tr>
+    const isOnline = u.lastLogin && (now - u.lastLogin) < 5 * 60 * 1000;
+    return `<tr>
       <td>
         <div style="display:flex;align-items:center;gap:6px">
-          ${isOnline ? '<span style="width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block;box-shadow:0 0 6px var(--ok)"></span>' : '<span style="width:7px;height:7px;border-radius:50%;background:var(--t3);display:inline-block"></span>'}
+          <span style="width:7px;height:7px;border-radius:50%;background:${isOnline?'var(--ok)':'var(--t3)'};display:inline-block;${isOnline?'box-shadow:0 0 6px var(--ok)':''}"></span>
           <strong style="color:var(--t0)">${esc(u.name)}</strong>
         </div>
       </td>
@@ -2690,22 +2707,20 @@ function openOwnerPanel() {
       <td><span class="user-role-badge ${u.role}">${u.role}</span></td>
       <td style="font-size:.68rem;color:var(--t2);font-family:var(--mono)">${lastLogin}</td>
       <td style="font-family:var(--mono);color:var(--t1);text-align:center">${u.msgs||0}</td>
-      <td>${u.role!=='owner' ? `<button class="del-user-btn" onclick="ownerDeleteUser('${u.email}')">Eliminar</button>` : '—'}</td>
+      <td>${u.role!=='owner'?`<button class="del-user-btn" onclick="ownerDeleteUser('${u.email}')">Eliminar</button>`:'—'}</td>
     </tr>`;
   }).join('');
-
-  document.getElementById('ownerPanel').classList.add('open');
 }
 
 function closeOwnerPanel() {
   document.getElementById('ownerPanel').classList.remove('open');
 }
 
-function ownerDeleteUser(email) {
-  if (!confirm('¿Eliminar al usuario ' + email + '? Esta acción no se puede deshacer.')) return;
-  AUTH.deleteUser(email);
-  toast('Usuario eliminado.', 'warn', 2000);
-  openOwnerPanel(); // refresh
+async function ownerDeleteUser(email) {
+  if (!confirm('¿Eliminar al usuario ' + email + '?')) return;
+  const ok = await AUTH.deleteUser(email);
+  if (ok) { toast('Usuario eliminado.', 'warn', 2000); openOwnerPanel(); }
+  else toast('Error al eliminar', 'err');
 }
 
 // Enter en campos de auth
@@ -4373,29 +4388,21 @@ fetchModels();
 D.ttsBtn.classList.toggle('tts-on', CFG.ttsEnabled);
 D.ttsBtn.textContent = CFG.ttsEnabled ? '🔊' : '🔇';
 
-// Inicializar DB local (crea owner si no existe)
-AUTH.init();
-
-// Verificar si ya tiene sesión local de RyuShet guardada
-const alreadyAuthed = (() => {
+// Auth init con Firebase — async
+(async () => {
   try {
-    const saved = localStorage.getItem('ryushet_session');
-    if (saved) {
-      const s   = JSON.parse(saved);
-      const db  = AUTH.getDB();
-      if (db[s.email]) { AUTH.currentUser = db[s.email]; return true; }
+    const alreadyAuthed = await AUTH.init();
+    if (alreadyAuthed) {
+      onAuthSuccess();
+      D.inp.focus();
+    } else {
+      checkPuterAuth();
     }
-  } catch(e) {}
-  return false;
+  } catch(e) {
+    console.warn('Firebase error:', e);
+    checkPuterAuth();
+  }
 })();
-
-if (alreadyAuthed) {
-  onAuthSuccess();
-  D.inp.focus();
-} else {
-  // Verificar estado de Puter antes de mostrar auth
-  checkPuterAuth();
-}
 </script>
 </body>
 </html>
