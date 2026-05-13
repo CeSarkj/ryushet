@@ -2839,7 +2839,7 @@ const ROLES = {
 // ─── CONFIG ─────────────────────────────────────────────────────
 const CFG = {
   model:       CLAUDE_MODELS[0].id,
-  maxTokens:   2048,
+  maxTokens:   8192,   // máximo permitido por los modelos
   temperature: 0.7,
   topP:        0.9,
   maxHistory:  50,
@@ -3352,6 +3352,99 @@ async function callClaude(system, messages, useStream, onToken) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  GENERACIÓN DE IMÁGENES — Pollinations.ai
+//  Gratis, sin API key, sin límites.
+//  Se activa automáticamente cuando el usuario pide crear algo visual.
+// ═══════════════════════════════════════════════════════════════
+
+// Palabras clave que activan la generación de imagen
+const IMG_TRIGGERS = [
+  'crea una imagen','genera una imagen','hazme una imagen','dibuja',
+  'ilustra','genera un arte','crea un arte','haz una foto','genera una foto',
+  'create an image','generate an image','draw','illustrate','make an image',
+  'imagen de','picture of','photo of','arte de','diseña','pinta',
+  'crea una ilustración','genera una ilustración','muéstrame visualmente',
+  'crea un dibujo','haz un dibujo','genera un dibujo',
+];
+
+function detectsImageRequest(text) {
+  const lower = text.toLowerCase();
+  return IMG_TRIGGERS.some(t => lower.includes(t));
+}
+
+// Extraer el prompt de imagen del texto del usuario
+function extractImagePrompt(text) {
+  const lower = text.toLowerCase();
+  // Buscar qué viene después del trigger
+  for (const trigger of IMG_TRIGGERS) {
+    const idx = lower.indexOf(trigger);
+    if (idx !== -1) {
+      const after = text.slice(idx + trigger.length).trim();
+      if (after.length > 2) return after.replace(/^(de |of |un |una |a |an )/i, '').trim();
+    }
+  }
+  // Si no encuentra after, usar el texto completo limpio
+  return text.replace(/^(crea|genera|haz|dibuja|ilustra|diseña|pinta)\s*/i, '').trim();
+}
+
+// Generar imagen con Pollinations.ai
+async function generateImage(prompt, msgId) {
+  const encoded = encodeURIComponent(prompt);
+  const seed    = Math.floor(Math.random() * 99999);
+  const url     = `https://image.pollinations.ai/prompt/${encoded}?width=768&height=768&seed=${seed}&nologo=true&enhance=true`;
+
+  // Actualizar burbuja con estado de carga
+  streamUpdate(msgId, `🎨 Generando imagen: *"${prompt}"*\n\n_Esto puede tardar unos segundos…_`, true);
+
+  try {
+    // Pre-cargar la imagen
+    await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload  = resolve;
+      img.onerror = reject;
+      img.src     = url;
+      // Timeout de 30 segundos
+      setTimeout(() => reject(new Error('timeout')), 30000);
+    });
+
+    // Mostrar imagen en la burbuja
+    const el = document.getElementById(msgId + '_c');
+    if (el) {
+      el.innerHTML = `
+        <p>🎨 Aquí está tu imagen${CFG.userName ? ', ' + CFG.userName : ''}:</p>
+        <img src="${url}" alt="${esc(prompt)}"
+             style="max-width:100%;border-radius:12px;margin:8px 0;cursor:zoom-in;border:1px solid rgba(255,255,255,.1)"
+             onclick="openLightbox(this.src)">
+        <div style="font-size:.72rem;color:var(--t2);font-family:var(--mono);margin-top:4px">
+          "${esc(prompt)}" · Pollinations.ai
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <a href="${url}" download="ryushet-image.jpg" style="padding:5px 12px;background:rgba(0,229,176,.1);border:1px solid rgba(0,229,176,.25);border-radius:6px;color:var(--a3);font-size:.7rem;font-family:var(--mono);text-decoration:none">⬇ Descargar</a>
+          <button onclick="regenerateImage('${esc(prompt)}')" style="padding:5px 12px;background:rgba(0,229,176,.1);border:1px solid rgba(0,229,176,.25);border-radius:6px;color:var(--a3);font-size:.7rem;font-family:var(--mono);cursor:pointer">🔄 Regenerar</button>
+        </div>`;
+    }
+    scrollBot();
+  } catch(e) {
+    streamUpdate(msgId,
+      `🎨 Intenté generar: *"${prompt}"*\n\n[Ver imagen](${url})\n\n_Si no carga, haz clic en el link._`,
+      true);
+  }
+}
+
+// Regenerar imagen con mismo prompt
+async function regenerateImage(prompt) {
+  if (S.loading) return;
+  setLoading(true);
+  addBubbleUser('🔄 Regenerar imagen', null);
+  const msgId = addBubble('ai', '');
+  try {
+    await generateImage(prompt, msgId);
+  } finally {
+    setLoading(false);
+  }
+}
+
 // ─── ENVIAR MENSAJE ──────────────────────────────────────────────
 async function send() {
   if (S.loading) { S.cancelled = true; return; }
@@ -3396,6 +3489,26 @@ async function send() {
 
   let reply = '';
   try {
+    // ── Detección automática de solicitud de imagen ──────────────
+    if (text && detectsImageRequest(text) && !img) {
+      const imagePrompt = extractImagePrompt(text);
+      removeEl(thinkId);
+      const msgId = addBubble('ai', '');
+      await generateImage(imagePrompt, msgId);
+      // Guardar en historial como respuesta de imagen
+      const imgReply = `[Imagen generada: "${imagePrompt}"]`;
+      sess.history.push({role:'assistant', content: imgReply});
+      sess.tokens += 50;
+      S.totalTokens += 50;
+      AUTH.trackMsg();
+      const ms = Date.now()-t0; S.latencies.push(ms);
+      D.stLast.textContent = ms<1000?ms+'ms':(ms/1000).toFixed(1)+'s';
+      updateStats();
+      if (sess.msgs===1) sess.title = '🎨 ' + imagePrompt.slice(0,30);
+      return; // no llamar al AI
+    }
+
+    // ── Llamada normal al AI ─────────────────────────────────────
     const { system, messages } = buildMessages(sess, text, img);
 
     if (CFG.stream) {
