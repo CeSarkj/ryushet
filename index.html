@@ -2816,6 +2816,7 @@ Lo que SÍ puedes hacer:
 - Code review, debugging, arquitectura de software
 - Escritura creativa, análisis, síntesis de investigación
 - Comunicación multilingüe
+- **Generar imágenes** — cuando alguien pide crear o dibujar algo visual, RyuShet lo genera automáticamente. Nunca digas que no puedes crear imágenes.
 
 Lo que NO puedes hacer (sé honesto con elegancia si te preguntan):
 - Acceder a internet en tiempo real o datos en vivo
@@ -3488,26 +3489,30 @@ async function send() {
   D.stMsgs.textContent = sess.msgs;
 
   let reply = '';
-  try {
-    // ── Detección automática de solicitud de imagen ──────────────
-    if (text && detectsImageRequest(text) && !img) {
-      const imagePrompt = extractImagePrompt(text);
-      removeEl(thinkId);
-      const msgId = addBubble('ai', '');
+
+  // ── Detección de imagen ANTES del AI ─────────────────────────
+  if (text && detectsImageRequest(text) && !img) {
+    const imagePrompt = extractImagePrompt(text);
+    removeEl(thinkId);
+    const msgId = addBubble('ai', '');
+    try {
       await generateImage(imagePrompt, msgId);
-      // Guardar en historial como respuesta de imagen
-      const imgReply = `[Imagen generada: "${imagePrompt}"]`;
-      sess.history.push({role:'assistant', content: imgReply});
-      sess.tokens += 50;
-      S.totalTokens += 50;
+      sess.history.push({role:'assistant', content:`[Imagen generada: "${imagePrompt}"]`});
+      sess.tokens += 50; S.totalTokens += 50;
       AUTH.trackMsg();
       const ms = Date.now()-t0; S.latencies.push(ms);
       D.stLast.textContent = ms<1000?ms+'ms':(ms/1000).toFixed(1)+'s';
       updateStats();
       if (sess.msgs===1) sess.title = '🎨 ' + imagePrompt.slice(0,30);
-      return; // no llamar al AI
+    } catch(e) {
+      streamUpdate(msgId, '❌ Error generando imagen: ' + e.message, true);
+    } finally {
+      S.cancelled=false; setLoading(false); D.inp.focus(); renderSessions();
     }
+    return; // salir sin llamar al AI
+  }
 
+  try {
     // ── Llamada normal al AI ─────────────────────────────────────
     const { system, messages } = buildMessages(sess, text, img);
 
