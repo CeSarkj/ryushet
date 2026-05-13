@@ -1,0 +1,4035 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RyuShet — AI Interface</title>
+<script src="https://js.puter.com/v2/"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+
+:root {
+  --bg0: #07080d;
+  --bg1: #0d0e16;
+  --bg2: #12131e;
+  --bg3: #191a28;
+  --bg4: #1e2030;
+  --line: #252638;
+  --line2: #2e3048;
+  --t0: #ecedf8;
+  --t1: #a8aac8;
+  --t2: #5a5c7a;
+  --t3: #35374f;
+  --a0: #7c6aff;
+  --a1: #5b4de0;
+  --a2: #ff6b9d;
+  --a3: #00e5b0;
+  --a4: #f0b429;
+  --err: #ff4d6d;
+  --warn: #ff9f43;
+  --ok: #00e5b0;
+  --r: 10px;
+  --r-sm: 6px;
+  --r-lg: 16px;
+  --sh: 0 4px 24px rgba(0,0,0,.5);
+  --sh-lg: 0 8px 48px rgba(0,0,0,.7);
+  --font: 'DM Sans', system-ui, sans-serif;
+  --mono: 'Space Mono', monospace;
+  --trans: .18s cubic-bezier(.4,0,.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg0);
+  color: var(--t0);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── BG GRID ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(124,106,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,106,255,.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed;
+  top: -30%;
+  left: -20%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(ellipse, rgba(124,106,255,.07) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── HEADER ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 52px;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--line);
+  position: relative;
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-mark {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, var(--a0), var(--a2));
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  box-shadow: 0 0 20px rgba(124,106,255,.35);
+  flex-shrink: 0;
+}
+.brand-name {
+  font-family: var(--mono);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--t0);
+}
+.brand-name span { color: var(--a0); }
+
+.hdr-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill-select {
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  color: var(--t0);
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: .7rem;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--trans);
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a5c7a'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 22px;
+}
+.pill-select:focus { border-color: var(--a0); }
+
+.hdr-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: .62rem;
+  color: var(--t2);
+}
+.status-badge .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--t3);
+}
+.status-badge.ok .dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.status-badge.err .dot { background: var(--err); }
+.status-badge.ok { border-color: rgba(0,229,176,.2); }
+
+.icon-btn {
+  width: 32px; height: 32px;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--t2);
+  font-size: 14px;
+  transition: all var(--trans);
+  flex-shrink: 0;
+}
+.icon-btn:hover { background: var(--bg4); border-color: var(--a0); color: var(--t0); }
+
+/* ── LAYOUT ── */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 240px;
+  background: var(--bg1);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.sb-section {
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.sb-label {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--t3);
+  margin-bottom: 10px;
+}
+
+.new-btn {
+  width: 100%;
+  padding: 9px;
+  background: linear-gradient(135deg, var(--a0), var(--a2));
+  border: none;
+  border-radius: var(--r);
+  color: white;
+  font-family: var(--font);
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--trans), transform var(--trans);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.new-btn:hover { opacity: .9; transform: translateY(-1px); }
+.new-btn:active { transform: translateY(0); }
+
+/* Sliders */
+.sl-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.sl-row .sl-name { font-size: .72rem; color: var(--t1); }
+.sl-row .sl-val {
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--a0);
+}
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  background: var(--line2);
+  border-radius: 2px;
+  outline: none;
+  margin-bottom: 10px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px; height: 13px;
+  background: var(--a0);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(124,106,255,.5);
+}
+
+/* Sessions list */
+.sessions-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+.sessions-scroll::-webkit-scrollbar { width: 4px; }
+.sessions-scroll::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 2px; }
+
+.sess-item {
+  padding: 9px 11px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background var(--trans);
+  border: 1px solid transparent;
+  margin-bottom: 3px;
+  position: relative;
+}
+.sess-item:hover { background: var(--bg3); }
+.sess-item.active { background: var(--bg3); border-color: var(--a0); }
+.sess-item .sess-title {
+  font-size: .75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--t0);
+}
+.sess-item .sess-meta {
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: var(--t3);
+  margin-top: 2px;
+}
+.sess-item .sess-del {
+  position: absolute;
+  right: 6px; top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--err);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+.sess-item:hover .sess-del { opacity: 1; }
+
+/* Model info box */
+.model-info {
+  padding: 10px 14px;
+  background: var(--bg2);
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: var(--t3);
+  line-height: 1.7;
+}
+.model-info .mi-line { display: flex; justify-content: space-between; }
+.model-info .mi-val { color: var(--a3); }
+
+/* ── CHAT ── */
+.chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Welcome */
+.welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 40px 20px;
+  text-align: center;
+}
+.wl-glyph {
+  width: 76px; height: 76px;
+  background: linear-gradient(135deg, var(--a0), var(--a2));
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  font-size: 36px;
+  box-shadow: 0 0 60px rgba(124,106,255,.3), 0 0 120px rgba(255,107,157,.1);
+  animation: float 4s ease-in-out infinite;
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.wl-title {
+  font-size: 1.6rem;
+  font-weight: 600;
+  background: linear-gradient(90deg, var(--a0), var(--a2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.wl-sub { color: var(--t2); font-size: .88rem; max-width: 380px; line-height: 1.6; }
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  max-width: 560px;
+  width: 100%;
+}
+.qp-card {
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r);
+  padding: 12px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--trans);
+  font-family: var(--font);
+}
+.qp-card:hover {
+  background: var(--bg3);
+  border-color: var(--a0);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(124,106,255,.15);
+}
+.qp-card .qp-icon { font-size: 1.2rem; margin-bottom: 6px; }
+.qp-card .qp-text { font-size: .75rem; color: var(--t1); line-height: 1.4; }
+
+/* Messages scroll */
+.msgs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  scroll-behavior: smooth;
+  background: var(--bg0);
+}
+.msgs::-webkit-scrollbar { width: 5px; }
+.msgs::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 3px; }
+
+/* Message row */
+.msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  animation: msgIn .22s ease;
+  width: 100%;
+}
+.msg.user {
+  flex-direction: row-reverse;
+}
+/* Inner content wrapper — alinea burbuja al lado correcto */
+.msg > div:last-child {
+  display: flex;
+  flex-direction: column;
+  max-width: 72%;
+}
+.msg.user > div:last-child {
+  align-items: flex-end;
+}
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.av {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+.av.user { background: linear-gradient(135deg, var(--a2), #b44dff); }
+.av.ai   { background: linear-gradient(135deg, var(--a0), var(--a3)); }
+
+.bub {
+  max-width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--r-lg);
+  font-size: .87rem;
+  line-height: 1.7;
+  word-break: break-word;
+  position: relative;
+}
+.bub.user {
+  background: var(--bg4);
+  border: 1px solid rgba(124,106,255,.2);
+  border-top-right-radius: 4px;
+  color: var(--t0);
+}
+.bub.ai {
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-top-left-radius: 4px;
+  color: var(--t0);
+}
+
+.bub-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: .58rem;
+  color: var(--t3);
+}
+.bub-copy {
+  background: none;
+  border: none;
+  color: var(--t3);
+  cursor: pointer;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity var(--trans), color var(--trans);
+  padding: 0;
+  font-family: var(--mono);
+}
+.bub:hover .bub-copy { opacity: 1; }
+.bub-copy:hover { color: var(--a0); }
+
+/* Inline elements */
+.bub p { margin-bottom: 8px; }
+.bub p:last-child { margin-bottom: 0; }
+.bub code:not(pre code) {
+  background: rgba(124,106,255,.12);
+  color: var(--a0);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: .82em;
+}
+.bub pre {
+  background: var(--bg0);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 14px;
+  overflow-x: auto;
+  margin: 8px 0;
+  position: relative;
+}
+.bub pre code {
+  font-family: var(--mono);
+  font-size: .75rem;
+  line-height: 1.6;
+  color: #a8c4ff;
+}
+.bub pre .lang-tag {
+  position: absolute;
+  top: 7px; right: 36px;
+  font-family: var(--mono);
+  font-size: .55rem;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.bub pre .copy-code {
+  position: absolute;
+  top: 6px; right: 8px;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  color: var(--t2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: .6rem;
+  cursor: pointer;
+  font-family: var(--mono);
+  transition: all var(--trans);
+  opacity: 0;
+}
+.bub pre:hover .copy-code { opacity: 1; }
+.bub pre .copy-code:hover { background: var(--a0); color: white; border-color: var(--a0); }
+.bub ul, .bub ol { padding-left: 18px; margin: 6px 0; }
+.bub li { margin: 3px 0; }
+.bub h1, .bub h2, .bub h3 { margin: 10px 0 5px; font-weight: 600; }
+.bub h1 { font-size: 1.05rem; }
+.bub h2 { font-size: .95rem; color: var(--a0); }
+.bub h3 { font-size: .88rem; color: var(--a3); }
+.bub strong { font-weight: 600; color: var(--t0); }
+.bub em { color: var(--t1); font-style: italic; }
+.bub a { color: var(--a0); text-decoration: none; }
+.bub a:hover { text-decoration: underline; }
+.bub hr { border: none; border-top: 1px solid var(--line); margin: 10px 0; }
+.bub blockquote {
+  border-left: 3px solid var(--a0);
+  padding-left: 10px;
+  margin: 6px 0;
+  color: var(--t1);
+  font-style: italic;
+}
+.bub table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: .8rem; }
+.bub th, .bub td { border: 1px solid var(--line2); padding: 5px 9px; text-align: left; }
+.bub th { background: var(--bg3); color: var(--a0); font-weight: 600; }
+
+/* Thinking dots */
+.thinking {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 6px 2px;
+}
+.thinking b {
+  width: 7px; height: 7px;
+  background: var(--a0);
+  border-radius: 50%;
+  display: block;
+  animation: tdot 1.2s infinite;
+}
+.thinking b:nth-child(2) { animation-delay: .18s; background: var(--a2); }
+.thinking b:nth-child(3) { animation-delay: .36s; background: var(--a3); }
+@keyframes tdot {
+  0%,60%,100% { transform: scale(1); opacity: .6; }
+  30%         { transform: scale(1.4); opacity: 1; }
+}
+
+/* Cursor blink */
+.cur {
+  display: inline-block;
+  width: 2px;
+  height: .9em;
+  background: var(--a0);
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  animation: blink .7s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── INPUT ZONE ── */
+.input-zone {
+  padding: 12px 24px 18px;
+  background: var(--bg0);
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.tools-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.tool-chip {
+  padding: 3px 10px;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  border-radius: 20px;
+  font-size: .68rem;
+  font-family: var(--mono);
+  color: var(--t2);
+  cursor: pointer;
+  transition: all var(--trans);
+}
+.tool-chip:hover { border-color: var(--a0); color: var(--t0); }
+.tool-chip.on { background: rgba(124,106,255,.15); border-color: var(--a0); color: var(--a0); }
+
+.inp-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.inp-wrap {
+  flex: 1;
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r-lg);
+  transition: border-color var(--trans), box-shadow var(--trans);
+  position: relative;
+}
+.inp-wrap:focus-within {
+  border-color: var(--a0);
+  box-shadow: 0 0 0 3px rgba(124,106,255,.1);
+}
+textarea#inp {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--t0);
+  font-family: var(--font);
+  font-size: .88rem;
+  line-height: 1.5;
+  padding: 11px 14px;
+  resize: none;
+  min-height: 44px;
+  max-height: 180px;
+  overflow-y: auto;
+  display: block;
+}
+textarea#inp::placeholder { color: var(--t3); }
+textarea#inp::-webkit-scrollbar { width: 3px; }
+textarea#inp::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 2px; }
+
+.char-c {
+  position: absolute;
+  bottom: 7px;
+  right: 12px;
+  font-family: var(--mono);
+  font-size: .58rem;
+  color: var(--t3);
+  pointer-events: none;
+  transition: color var(--trans);
+}
+.char-c.warn { color: var(--warn); }
+.char-c.danger { color: var(--err); }
+
+.send {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--a0), var(--a2));
+  border: none;
+  border-radius: var(--r-lg);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  cursor: pointer;
+  transition: transform var(--trans), box-shadow var(--trans), opacity var(--trans);
+  flex-shrink: 0;
+  color: white;
+}
+.send:hover:not(:disabled) {
+  transform: scale(1.07);
+  box-shadow: 0 4px 20px rgba(124,106,255,.45);
+}
+.send:active:not(:disabled) { transform: scale(.95); }
+.send:disabled { opacity: .35; cursor: not-allowed; }
+
+/* ── BOTÓN IMAGEN ── */
+.img-btn {
+  width: 44px; height: 44px;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  border-radius: var(--r-lg);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--t2);
+  flex-shrink: 0;
+  transition: all var(--trans);
+  position: relative;
+}
+.img-btn:hover { background: var(--bg4); border-color: var(--a0); color: var(--t0); }
+.img-btn.has-img { border-color: var(--a3); color: var(--a3); background: rgba(0,229,176,.08); }
+.img-btn .img-badge {
+  position: absolute;
+  top: -4px; right: -4px;
+  width: 14px; height: 14px;
+  background: var(--a3);
+  border-radius: 50%;
+  font-size: .5rem;
+  color: #000;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+/* ── PREVIEW DE IMAGEN ── */
+.img-preview-bar {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg2);
+  border: 1px solid rgba(0,229,176,.25);
+  border-radius: var(--r);
+  margin-bottom: 8px;
+  animation: msgIn .2s ease;
+}
+.img-preview-bar.visible { display: flex; }
+.img-preview-bar img {
+  width: 48px; height: 48px;
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line2);
+  flex-shrink: 0;
+}
+.img-preview-info {
+  flex: 1;
+  min-width: 0;
+}
+.img-preview-name {
+  font-size: .72rem;
+  color: var(--t0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.img-preview-size {
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: var(--a3);
+  margin-top: 2px;
+}
+.img-preview-remove {
+  background: none;
+  border: none;
+  color: var(--err);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--r-sm);
+  transition: background var(--trans);
+  flex-shrink: 0;
+}
+.img-preview-remove:hover { background: rgba(255,77,109,.12); }
+
+/* ── IMAGEN EN BURBUJA ── */
+.bub-img {
+  max-width: 260px;
+  max-height: 200px;
+  border-radius: var(--r);
+  border: 1px solid var(--line2);
+  margin-bottom: 8px;
+  display: block;
+  cursor: zoom-in;
+}
+
+/* ── LIGHTBOX ── */
+#imgLightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.88);
+  z-index: 9000;
+  place-items: center;
+  cursor: zoom-out;
+  backdrop-filter: blur(8px);
+}
+#imgLightbox.open { display: grid; }
+#imgLightbox img {
+  max-width: 90vw;
+  max-height: 88vh;
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-lg);
+}
+
+/* hint */
+.inp-hint {
+  font-size: .62rem;
+  color: var(--t3);
+  margin-top: 6px;
+  text-align: center;
+  font-family: var(--mono);
+}
+.inp-hint kbd {
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: var(--mono);
+}
+
+/* ── RIGHT PANEL ── */
+.rpanel {
+  width: 220px;
+  background: var(--bg1);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 14px;
+}
+.rpanel::-webkit-scrollbar { width: 4px; }
+.rpanel::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 2px; }
+
+.rp-sect { margin-bottom: 18px; }
+.rp-title {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--t3);
+  margin-bottom: 10px;
+}
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  margin-bottom: 6px;
+}
+.stat-card .sc-label { font-size: .68rem; color: var(--t2); margin-bottom: 3px; }
+.stat-card .sc-val {
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--t0);
+}
+.stat-card .sc-val.c0 { color: var(--a0); }
+.stat-card .sc-val.c1 { color: var(--a2); }
+.stat-card .sc-val.c2 { color: var(--a3); }
+.stat-card .sc-val.c3 { color: var(--a4); }
+
+.action-btn {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r-sm);
+  color: var(--t1);
+  font-family: var(--font);
+  font-size: .73rem;
+  cursor: pointer;
+  transition: all var(--trans);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+}
+.action-btn:hover { background: var(--bg3); border-color: var(--a0); color: var(--t0); }
+
+/* ── TOAST ── */
+#toasts {
+  position: fixed;
+  bottom: 20px; right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  z-index: 9999;
+}
+.toast {
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  font-size: .78rem;
+  max-width: 280px;
+  box-shadow: var(--sh-lg);
+  animation: tIn .2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--t0);
+}
+.toast.ok  { border-color: var(--ok);  }
+.toast.err { border-color: var(--err); }
+.toast.warn{ border-color: var(--warn);}
+@keyframes tIn { from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:translateX(0)} }
+
+/* ── MODAL ── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  animation: fIn .15s ease;
+}
+@keyframes fIn { from{opacity:0} to{opacity:1} }
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r-lg);
+  padding: 26px;
+  width: 500px;
+  max-width: 92vw;
+  max-height: 82vh;
+  overflow-y: auto;
+  box-shadow: var(--sh-lg);
+  animation: mUp .2s ease;
+}
+@keyframes mUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.fg { margin-bottom: 13px; }
+.fg label {
+  display: block;
+  font-size: .72rem;
+  font-weight: 500;
+  color: var(--t1);
+  margin-bottom: 5px;
+}
+.fi {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--line2);
+  color: var(--t0);
+  padding: 8px 11px;
+  border-radius: var(--r-sm);
+  font-size: .82rem;
+  outline: none;
+  transition: border-color var(--trans);
+  font-family: var(--font);
+}
+.fi:focus { border-color: var(--a0); }
+.fi-ta { min-height: 90px; resize: vertical; }
+select.fi { appearance: none; -webkit-appearance: none; cursor: pointer; }
+
+.btn {
+  padding: 8px 16px;
+  border-radius: var(--r-sm);
+  font-size: .8rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  font-family: var(--font);
+  transition: all var(--trans);
+}
+.btn-p { background: var(--a0); color: white; }
+.btn-p:hover { background: var(--a1); }
+.btn-s { background: var(--bg3); color: var(--t0); border: 1px solid var(--line2); }
+.btn-s:hover { background: var(--bg4); }
+.btn-d { background: var(--err); color: white; }
+.btn-d:hover { filter: brightness(1.1); }
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px) { .sidebar,.rpanel { display: none; } }
+@media(max-width:600px) {
+  .hdr-center { display: none; }
+  .msgs { padding: 12px; }
+  .bub { max-width: 85%; }
+}
+
+/* ── VOZ ── */
+.img-btn.mic-listening {
+  border-color: var(--err);
+  color: var(--err);
+  background: rgba(255,77,109,.12);
+  animation: micPulse 1s ease-in-out infinite;
+}
+.img-btn.tts-on {
+  border-color: var(--a3);
+  color: var(--a3);
+  background: rgba(0,229,176,.08);
+}
+@keyframes micPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,77,109,.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(255,77,109,0); }
+}
+
+/* ── OVERLAY ESCUCHANDO ── */
+#listenOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(7,8,13,.88);
+  backdrop-filter: blur(12px);
+  z-index: 8000;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+#listenOverlay.open { display: flex; }
+.listen-orb {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,77,109,.6), rgba(124,106,255,.3));
+  animation: orbPulse 1.2s ease-in-out infinite;
+  display: grid;
+  place-items: center;
+  font-size: 48px;
+  cursor: pointer;
+}
+@keyframes orbPulse {
+  0%,100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(255,77,109,.5); }
+  50%      { transform: scale(1.1); box-shadow: 0 0 40px 20px rgba(255,77,109,0); }
+}
+.listen-label {
+  font-size: 1.1rem;
+  color: var(--t1);
+  font-family: var(--mono);
+  letter-spacing: .05em;
+}
+.listen-transcript {
+  max-width: 480px;
+  text-align: center;
+  color: var(--t0);
+  font-size: 1rem;
+  min-height: 1.5em;
+  padding: 0 24px;
+}
+.listen-stop {
+  padding: 10px 28px;
+  background: var(--err);
+  border: none;
+  border-radius: var(--r-lg);
+  color: white;
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity var(--trans);
+}
+.listen-stop:hover { opacity: .85; }
+
+/* ── BARRA CTX ── */
+.ctx-bar-wrap {
+  margin-top: 4px;
+  background: var(--bg3);
+  border-radius: 4px;
+  height: 4px;
+  overflow: hidden;
+}
+.ctx-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--a3), var(--a0));
+  border-radius: 4px;
+  transition: width .5s ease, background .5s;
+  width: 100%;
+}
+.ctx-bar.warn  { background: var(--warn); }
+.ctx-bar.danger{ background: var(--err);  }
+
+/* ════════════════════════════════════════
+   AUTH SCREEN
+════════════════════════════════════════ */
+#authScreen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg0);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0;
+}
+.auth-card {
+  background: var(--bg1);
+  border: 1px solid var(--line2);
+  border-radius: 20px;
+  padding: 40px 44px 36px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--sh-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.auth-logo {
+  text-align: center;
+  margin-bottom: 4px;
+}
+.auth-logo-icon { font-size: 2.5rem; }
+.auth-logo-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--t0);
+}
+.auth-logo-name span { color: var(--a3); }
+.auth-logo-sub {
+  font-size: .72rem;
+  color: var(--t2);
+  font-family: var(--mono);
+  margin-top: 4px;
+}
+.auth-tabs {
+  display: flex;
+  background: var(--bg2);
+  border-radius: var(--r-lg);
+  padding: 4px;
+  gap: 4px;
+}
+.auth-tab {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--t2);
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--trans);
+  font-family: var(--sans);
+}
+.auth-tab.active {
+  background: var(--bg4);
+  color: var(--t0);
+  box-shadow: var(--sh);
+}
+.auth-form { display: flex; flex-direction: column; gap: 14px; }
+.auth-field { display: flex; flex-direction: column; gap: 6px; }
+.auth-field label {
+  font-size: .72rem;
+  color: var(--t2);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.auth-field input {
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r);
+  padding: 11px 14px;
+  color: var(--t0);
+  font-size: .88rem;
+  font-family: var(--sans);
+  transition: border-color var(--trans);
+  outline: none;
+}
+.auth-field input:focus { border-color: var(--a3); }
+.auth-submit {
+  padding: 13px;
+  background: linear-gradient(135deg, var(--a0), var(--a3));
+  border: none;
+  border-radius: var(--r-lg);
+  color: #000;
+  font-weight: 700;
+  font-size: .9rem;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: opacity var(--trans);
+  margin-top: 4px;
+}
+.auth-submit:hover { opacity: .88; }
+.auth-submit:disabled { opacity: .5; cursor: not-allowed; }
+.auth-error {
+  background: rgba(255,77,109,.1);
+  border: 1px solid rgba(255,77,109,.3);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  font-size: .8rem;
+  color: var(--err);
+  display: none;
+}
+.auth-error.show { display: block; }
+.auth-footer {
+  text-align: center;
+  font-size: .72rem;
+  color: var(--t2);
+  font-family: var(--mono);
+}
+
+/* ── OWNER BADGE en header ── */
+.owner-badge {
+  background: linear-gradient(135deg, #7c6aff, #00e5b0);
+  color: #000;
+  font-size: .65rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-family: var(--mono);
+  letter-spacing: .04em;
+}
+
+/* ── USER CHIP en header ── */
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 20px;
+  padding: 4px 12px 4px 8px;
+  font-size: .78rem;
+  color: var(--t1);
+  cursor: pointer;
+  transition: all var(--trans);
+}
+.user-chip:hover { border-color: var(--a3); color: var(--t0); }
+.user-chip .av-mini {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--a0), var(--a3));
+  display: grid;
+  place-items: center;
+  font-size: .7rem;
+  color: #000;
+  font-weight: 700;
+}
+
+/* ── OWNER PANEL ── */
+#ownerPanel {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(8px);
+  z-index: 9500;
+  place-items: center;
+}
+#ownerPanel.open { display: grid; }
+.owner-modal {
+  background: var(--bg1);
+  border: 1px solid var(--line2);
+  border-radius: 20px;
+  width: 560px;
+  max-width: 95vw;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.owner-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.owner-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--t0);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.owner-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 16px 24px;
+}
+.owner-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.owner-stat {
+  background: var(--bg2);
+  border-radius: var(--r);
+  padding: 12px;
+  text-align: center;
+}
+.owner-stat-n { font-size: 1.5rem; font-weight: 700; color: var(--a3); }
+.owner-stat-l { font-size: .68rem; color: var(--t2); font-family: var(--mono); margin-top: 2px; }
+.users-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.users-table th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--t2);
+  font-family: var(--mono);
+  font-size: .68rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+}
+.users-table td {
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--t1);
+  vertical-align: middle;
+}
+.users-table tr:last-child td { border-bottom: none; }
+.user-role-badge {
+  font-size: .65rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+.user-role-badge.owner { background: rgba(124,106,255,.2); color: #7c6aff; }
+.user-role-badge.user  { background: rgba(0,229,176,.1);   color: var(--a3); }
+.del-user-btn {
+  background: none;
+  border: 1px solid rgba(255,77,109,.3);
+  border-radius: var(--r-sm);
+  color: var(--err);
+  font-size: .7rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all var(--trans);
+}
+.del-user-btn:hover { background: rgba(255,77,109,.1); }
+
+/* ════════════════════════════════════════
+   VISION MODE MODAL
+════════════════════════════════════════ */
+#visionModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.85);
+  backdrop-filter: blur(10px);
+  z-index: 8500;
+  place-items: center;
+}
+#visionModal.open { display: grid; }
+.vision-panel {
+  background: #07080d;
+  border: 1px solid rgba(0,200,255,.25);
+  border-radius: 16px;
+  width: 96vw;
+  max-width: 1100px;
+  height: 88vh;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  box-shadow: 0 0 60px rgba(0,200,255,.15);
+}
+.vision-header {
+  grid-column: 1/-1;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(0,200,255,.15);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0,200,255,.04);
+}
+.vision-title {
+  font-family: var(--mono);
+  font-size: .9rem;
+  color: var(--a3);
+  font-weight: 700;
+  letter-spacing: .08em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vision-stats {
+  margin-left: auto;
+  display: flex;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: .62rem;
+  color: var(--t2);
+}
+.vision-stat-val { color: var(--a3); font-weight: 700; }
+.v-close {
+  background: none;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  color: var(--t2);
+  font-size: .8rem;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all var(--trans);
+  font-family: var(--mono);
+}
+.v-close:hover { border-color: var(--err); color: var(--err); }
+
+/* Camera area */
+.vision-cam {
+  position: relative;
+  background: #000;
+  overflow: hidden;
+}
+.vision-cam video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.vision-cam canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+.vision-cam-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--t2);
+  font-family: var(--mono);
+  font-size: .78rem;
+}
+.vision-cam-placeholder div:first-child { font-size: 3rem; opacity: .3; }
+
+/* Vision HUD */
+.v-hud {
+  position: absolute;
+  top: 10px; right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 10;
+}
+.v-hud-tag {
+  background: rgba(0,0,0,.6);
+  border: 1px solid rgba(0,200,255,.3);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: var(--a3);
+  backdrop-filter: blur(4px);
+}
+
+/* Corner brackets */
+.vision-cam::before, .vision-cam::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  border-color: var(--a3);
+  border-style: solid;
+  z-index: 10;
+  opacity: .7;
+}
+.vision-cam::before { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+.vision-cam::after  { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+
+/* Controls bar */
+.vision-controls {
+  grid-column: 1/-1;
+  padding: 10px 16px;
+  border-top: 1px solid rgba(0,200,255,.1);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: rgba(0,0,0,.3);
+}
+.v-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  font-family: var(--mono);
+  font-size: .68rem;
+  cursor: pointer;
+  transition: all .2s;
+  letter-spacing: .04em;
+}
+.v-btn-primary { background: var(--a3); color: #000; font-weight: 700; }
+.v-btn-primary:hover { filter: brightness(1.15); }
+.v-btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+.v-btn-ghost { background: rgba(0,200,255,.08); border: 1px solid rgba(0,200,255,.2); color: var(--a3); }
+.v-btn-ghost:hover { background: rgba(0,200,255,.16); }
+.v-btn-ghost.v-active { background: rgba(0,200,255,.2); border-color: var(--a3); box-shadow: 0 0 10px rgba(0,200,255,.2); }
+.v-btn-orange { background: rgba(255,107,43,.1); border: 1px solid rgba(255,107,43,.3); color: #ff6b2b; }
+.v-btn-orange:hover { background: rgba(255,107,43,.2); }
+.v-btn-orange.v-active { background: rgba(255,107,43,.25); }
+.v-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: .62rem;
+  color: var(--t2);
+  margin-left: auto;
+}
+.v-slider-row input[type=range] { accent-color: var(--a3); width: 80px; }
+
+/* Right side tabs */
+.vision-right {
+  border-left: 1px solid rgba(0,200,255,.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.v-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(0,200,255,.1);
+}
+.v-tab {
+  flex: 1;
+  padding: 10px 6px;
+  border: none;
+  background: transparent;
+  color: var(--t2);
+  font-family: var(--mono);
+  font-size: .58rem;
+  cursor: pointer;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: all .2s;
+  border-bottom: 2px solid transparent;
+}
+.v-tab:hover { color: var(--t1); }
+.v-tab.v-active { color: var(--a3); border-bottom-color: var(--a3); }
+.v-tab-content { display: none; flex: 1; overflow-y: auto; flex-direction: column; }
+.v-tab-content.v-active { display: flex; }
+
+/* Detections */
+.v-det-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.v-det-item {
+  background: rgba(0,200,255,.04);
+  border: 1px solid rgba(0,200,255,.1);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: .66rem;
+  animation: slideIn .2s ease;
+}
+@keyframes slideIn { from{opacity:0;transform:translateX(6px)} to{opacity:1;transform:none} }
+.v-det-type { color: var(--a3); font-weight: 700; font-size: .58rem; text-transform: uppercase; margin-bottom: 2px; }
+.v-det-val  { color: var(--t0); margin-bottom: 2px; }
+.v-det-meta { color: var(--t2); font-size: .6rem; }
+.v-det-result { color: #00ff88; margin-top: 4px; padding: 3px 6px; background: rgba(0,255,136,.06); border-radius: 4px; }
+
+/* OCR panel */
+.v-ocr-panel { padding: 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.v-ocr-preview {
+  background: #000;
+  border: 1px solid rgba(0,200,255,.15);
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#vOcrCanvas { max-width: 100%; max-height: 130px; display: none; }
+.v-field {
+  background: rgba(0,0,0,.4);
+  border: 1px solid rgba(0,200,255,.12);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.v-field-label { font-family: var(--mono); font-size: .58rem; color: var(--t2); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 4px; }
+.v-field-val { font-family: var(--mono); font-size: .78rem; color: var(--t0); word-break: break-all; }
+.v-field-val.math { color: var(--a3); }
+.v-progress { height: 2px; background: rgba(0,200,255,.1); border-radius: 1px; overflow: hidden; margin-top: 4px; }
+.v-progress-fill { height: 100%; background: linear-gradient(90deg, var(--a3), #00ffea); width: 0%; transition: width .3s; }
+
+/* Math memory */
+.v-math-section { padding: 8px; display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; }
+.v-math-search {
+  background: rgba(0,0,0,.4);
+  border: 1px solid rgba(0,200,255,.2);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--t0);
+  font-family: var(--mono);
+  font-size: .72rem;
+  outline: none;
+  width: 100%;
+}
+.v-math-search:focus { border-color: var(--a3); }
+.v-math-search::placeholder { color: var(--t2); }
+.v-method-card {
+  background: rgba(0,200,255,.03);
+  border: 1px solid rgba(0,200,255,.08);
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.v-method-card:hover { border-color: rgba(0,200,255,.25); background: rgba(0,200,255,.07); }
+.v-method-name   { font-family: var(--mono); font-size: .65rem; color: var(--a3); font-weight: 700; margin-bottom: 3px; }
+.v-method-formula{ font-family: var(--mono); font-size: .72rem; color: var(--t0); margin-bottom: 3px; }
+.v-method-desc   { font-size: .64rem; color: var(--t2); line-height: 1.5; }
+.v-method-tags   { display: flex; gap: 3px; margin-top: 5px; flex-wrap: wrap; }
+.v-method-tag    { padding: 1px 5px; border-radius: 3px; font-family: var(--mono); font-size: .52rem; background: rgba(0,200,255,.1); color: var(--a3); border: 1px solid rgba(0,200,255,.15); }
+
+/* Send to chat button */
+.v-send-chat {
+  width: 100%;
+  padding: 8px;
+  background: rgba(0,200,255,.08);
+  border: 1px solid rgba(0,200,255,.2);
+  border-radius: 6px;
+  color: var(--a3);
+  font-family: var(--mono);
+  font-size: .65rem;
+  cursor: pointer;
+  transition: all .2s;
+  margin-top: 4px;
+}
+.v-send-chat:hover { background: rgba(0,200,255,.15); }
+
+/* ── SCROLLBAR GLOBAL ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     AUTH SCREEN
+═══════════════════════════════════════ -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">⚡</div>
+      <div class="auth-logo-name">Ryu<span>Shet</span></div>
+      <div class="auth-logo-sub">Advanced AI Interface · Powered by Puter.js</div>
+    </div>
+
+    <!-- Estado: verificando -->
+    <div id="authChecking" style="text-align:center;padding:20px 0;color:var(--t2);font-family:var(--mono);font-size:.8rem">
+      <div class="thinking" style="justify-content:center;margin-bottom:12px"><b></b><b></b><b></b></div>
+      Verificando sesión…
+    </div>
+
+    <!-- Estado: conectar con Puter -->
+    <div id="authPuter" style="display:none;flex-direction:column;gap:16px">
+      <p style="font-size:.85rem;color:var(--t1);text-align:center;line-height:1.7;margin:0">
+        RyuShet usa <strong style="color:var(--a3)">Puter</strong> para acceder a GPT-4o,<br>
+        Claude, DeepSeek y más — completamente gratis.
+      </p>
+      <button class="auth-submit" id="btnPuterLogin" onclick="doPuterAuth()">
+        ⚡ Conectar con Puter — Gratis
+      </button>
+      <div id="authError" class="auth-error"></div>
+      <p style="font-size:.7rem;color:var(--t2);text-align:center;font-family:var(--mono);line-height:1.6">
+        Sin tarjeta de crédito · Sin límites de uso<br>
+        <a href="https://puter.com" target="_blank" style="color:var(--a3)">¿Qué es Puter?</a>
+      </p>
+    </div>
+
+    <!-- Estado: autenticado en Puter — login local RyuShet -->
+    <div id="authLocal" style="display:none;flex-direction:column;gap:20px">
+      <div id="puterUserInfo" style="background:var(--bg2);border-radius:var(--r);padding:12px 14px;font-size:.82rem;color:var(--t1);display:flex;align-items:center;gap:10px">
+        <span style="font-size:1.4rem">✅</span>
+        <div>
+          <div style="font-weight:600;color:var(--t0)" id="puterUserName">Usuario de Puter</div>
+          <div style="font-size:.72rem;color:var(--t2);font-family:var(--mono)" id="puterUserEmail">Conectado</div>
+        </div>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Iniciar sesión</button>
+        <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Crear cuenta</button>
+      </div>
+      <div class="auth-error" id="authErrorLocal"></div>
+      <!-- LOGIN -->
+      <div class="auth-form" id="formLogin">
+        <div class="auth-field">
+          <label>Correo electrónico</label>
+          <input type="email" id="loginEmail" placeholder="tu@correo.com" autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label>Contraseña</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="auth-submit" id="loginBtn" onclick="doLogin()">Entrar a RyuShet</button>
+      </div>
+      <!-- REGISTER -->
+      <div class="auth-form" id="formRegister" style="display:none">
+        <div class="auth-field">
+          <label>Nombre</label>
+          <input type="text" id="regName" placeholder="¿Cómo te llamo?" maxlength="40">
+        </div>
+        <div class="auth-field">
+          <label>Correo electrónico</label>
+          <input type="email" id="regEmail" placeholder="tu@correo.com" autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label>Contraseña</label>
+          <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+        </div>
+        <div class="auth-field">
+          <label>Confirmar contraseña</label>
+          <input type="password" id="regPassword2" placeholder="Repite tu contraseña">
+        </div>
+        <button class="auth-submit" id="registerBtn" onclick="doRegister()">Crear mi cuenta</button>
+      </div>
+    </div>
+
+    <div class="auth-footer">RyuShet © 2026 · Todos los derechos reservados</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     OWNER PANEL
+═══════════════════════════════════════ -->
+<div id="ownerPanel">
+  <div class="owner-modal">
+    <div class="owner-header">
+      <div class="owner-title">👑 Panel de Owner <span class="owner-badge">ADMIN</span></div>
+      <button class="icon-btn" onclick="closeOwnerPanel()">✕</button>
+    </div>
+    <div class="owner-body">
+      <div class="owner-stat-row">
+        <div class="owner-stat">
+          <div class="owner-stat-n" id="ownerTotalUsers">0</div>
+          <div class="owner-stat-l">Usuarios</div>
+        </div>
+        <div class="owner-stat">
+          <div class="owner-stat-n" id="ownerTotalSessions">0</div>
+          <div class="owner-stat-l">Sesiones</div>
+        </div>
+        <div class="owner-stat">
+          <div class="owner-stat-n" id="ownerTotalMsgs">0</div>
+          <div class="owner-stat-l">Mensajes</div>
+        </div>
+      </div>
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Correo</th>
+            <th>Rol</th>
+            <th>Registro</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="ownerUsersTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="brand">
+    <div class="brand-mark">⚡</div>
+    <div class="brand-name">Ryu<span>Shet</span></div>
+  </div>
+  <div class="hdr-center">
+    <select class="pill-select" id="roleSelect">
+      <option value="default">🧠 General</option>
+      <option value="coder">💻 Coder</option>
+      <option value="analyst">📊 Analyst</option>
+      <option value="creative">✍️ Creative</option>
+      <option value="tutor">🎓 Tutor</option>
+      <option value="assistant">📋 Assistant</option>
+    </select>
+    <select class="pill-select" id="modelSelect">
+      <option value="llama3.2">llama3.2</option>
+    </select>
+  </div>
+  <div class="hdr-right">
+    <div class="user-chip" id="userChip" onclick="onUserChipClick()" style="display:none">
+      <div class="av-mini" id="userInitial">?</div>
+      <span id="userChipName">Usuario</span>
+    </div>
+    <div class="status-badge" id="statusBadge">
+      <span class="dot"></span>
+      <span id="statusText">connecting…</span>
+    </div>
+    <button class="icon-btn" id="btnVision" title="Vision Mode — Cámara, seguimiento y OCR">👁️</button>
+    <button class="icon-btn" id="btnSettings" title="Settings">⚙️</button>
+    <button class="icon-btn" id="btnExport" title="Export chat">💾</button>
+    <button class="icon-btn" id="btnClear" title="Clear chat">🗑️</button>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-section">
+      <button class="new-btn" id="btnNew">＋ &nbsp;New Chat</button>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Parameters</div>
+      <div class="sl-row"><span class="sl-name">Temperature</span><span class="sl-val" id="vTemp">0.70</span></div>
+      <input type="range" id="sTemp" min="0" max="2" step="0.05" value="0.7">
+      <div class="sl-row"><span class="sl-name">Top P</span><span class="sl-val" id="vTopP">0.90</span></div>
+      <input type="range" id="sTopP" min="0" max="1" step="0.05" value="0.9">
+      <div class="sl-row"><span class="sl-name">Max Tokens</span><span class="sl-val" id="vMaxTok">2048</span></div>
+      <input type="range" id="sMaxTok" min="64" max="4096" step="64" value="2048">
+    </div>
+    <div class="sb-label" style="padding:14px 14px 6px">Sessions</div>
+    <div class="sessions-scroll" id="sessionsList"></div>
+    <div class="model-info" id="modelInfo">
+      <div class="mi-line"><span>Model</span><span class="mi-val" id="miModel">—</span></div>
+      <div class="mi-line"><span>API</span><span class="mi-val" id="miOllama">—</span></div>
+      <div class="mi-line"><span>Sessions</span><span class="mi-val" id="miSessions">0</span></div>
+    </div>
+  </aside>
+
+  <!-- CHAT -->
+  <main class="chat" id="chatMain">
+    <div class="welcome" id="welcome">
+      <div class="wl-glyph">⚡</div>
+      <div>
+        <div class="wl-title">RyuShet</div>
+        <div class="wl-sub">All systems operational · Voice · Vision · Streaming</div>
+      </div>
+      <div class="quick-grid">
+        <button class="qp-card" data-p="Run a full diagnostic: analyze my current capabilities and suggest how I can work more efficiently with you.">
+          <div class="qp-icon">🔬</div>
+          <div class="qp-text">Run Diagnostics</div>
+        </button>
+        <button class="qp-card" data-p="I need a code review. Here's a function — analyze it for bugs, performance, and best practices: function processData(data) { let result = []; for(var i=0;i<data.length;i++){ if(data[i] != null) result.push(data[i]*2) } return result }">
+          <div class="qp-icon">💻</div>
+          <div class="qp-text">Code Analysis</div>
+        </button>
+        <button class="qp-card" data-p="Brief me on the current state of AI: the key developments, the major players, and what I should be paying attention to right now.">
+          <div class="qp-icon">🧠</div>
+          <div class="qp-text">AI Intelligence Brief</div>
+        </button>
+        <button class="qp-card" data-p="I need to make a decision and I want a structured analysis. Help me think through: pros, cons, risks, and your recommendation.">
+          <div class="qp-icon">⚖️</div>
+          <div class="qp-text">Decision Analysis</div>
+        </button>
+        <button class="qp-card" data-p="Draft a professional email for me. I'll describe the situation: [describe your situation here]. Make it concise, clear, and effective.">
+          <div class="qp-icon">📨</div>
+          <div class="qp-text">Draft Communication</div>
+        </button>
+        <button class="qp-card" data-p="Give me a creative brief: I want to build something impressive this weekend using AI. Suggest 3 project ideas with increasing complexity, including tech stack and estimated time.">
+          <div class="qp-icon">🚀</div>
+          <div class="qp-text">Weekend Project Brief</div>
+        </button>
+      </div>
+    </div><!-- /welcome -->
+
+    <div class="msgs" id="msgs" style="display:none"></div>
+    <div class="input-zone">
+      <div class="tools-row">
+        <button class="tool-chip on" id="chipStream">⚡ Stream</button>
+        <button class="tool-chip" id="chipCache">💾 Cache</button>
+        <button class="tool-chip" id="chipCode">👨‍💻 Code Mode</button>
+      </div>
+      <!-- Preview imagen adjunta -->
+      <div class="img-preview-bar" id="imgPreviewBar">
+        <img id="imgPreviewThumb" src="" alt="preview">
+        <div class="img-preview-info">
+          <div class="img-preview-name" id="imgPreviewName">imagen.jpg</div>
+          <div class="img-preview-size" id="imgPreviewSize">0 KB</div>
+        </div>
+        <button class="img-preview-remove" id="imgRemoveBtn" title="Quitar imagen">✕</button>
+      </div>
+
+      <div class="inp-row">
+        <button class="img-btn" id="imgUploadBtn" title="Adjuntar imagen (PNG, JPG, GIF, WEBP)">
+          🖼️
+          <span class="img-badge" id="imgBadge" style="display:none">1</span>
+        </button>
+        <button class="img-btn" id="micBtn" title="Hablar con RyuShet (mantén presionado o clic)">🎤</button>
+        <button class="img-btn" id="ttsBtn" title="Activar/desactivar voz de RyuShet" style="font-size:15px">🔊</button>
+        <input type="file" id="imgFileInput" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none">
+        <div class="inp-wrap">
+          <textarea id="inp" placeholder="Escribe tu mensaje… o adjunta una imagen 🖼️" rows="1"></textarea>
+          <span class="char-c" id="charC">0</span>
+        </div>
+        <button class="send" id="btnSend" title="Enviar (Enter)">▶</button>
+      </div>
+      <div class="inp-hint"><kbd>Enter</kbd> enviar &nbsp;·&nbsp; <kbd>Shift+Enter</kbd> nueva línea &nbsp;·&nbsp; <kbd>↑</kbd> última pregunta &nbsp;·&nbsp; 🖼️ imagen &nbsp;·&nbsp; 🎤 voz</div>
+    </div>
+  </main>
+
+  <!-- LIGHTBOX -->
+  <div id="imgLightbox" onclick="this.classList.remove('open')">
+    <img id="imgLightboxImg" src="" alt="">
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <aside class="rpanel">
+    <div class="rp-sect">
+      <div class="rp-title">Session Stats</div>
+      <div class="stat-card">
+        <div class="sc-label">Messages</div>
+        <div class="sc-val c0" id="stMsgs">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label">Est. Tokens</div>
+        <div class="sc-val c1" id="stTok">0</div>
+      </div>
+      <div class="stat-card" id="tokLimitCard" title="Tokens restantes estimados en el contexto (200k)">
+        <div class="sc-label">Ctx restante</div>
+        <div class="sc-val c3" id="stTokLeft">200k</div>
+        <div class="ctx-bar-wrap"><div class="ctx-bar" id="ctxBar"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label">Avg Latency</div>
+        <div class="sc-val c2" id="stLat">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label">Last Response</div>
+        <div class="sc-val c3" id="stLast">—</div>
+      </div>
+    </div>
+    <div class="rp-sect">
+      <div class="rp-title">Vision & Tools</div>
+      <button class="action-btn" id="actVision" style="background:rgba(0,200,255,.08);border-color:rgba(0,200,255,.25);color:#00c8ff">👁️ Vision Mode</button>
+    </div>
+    <div class="rp-sect">
+      <div class="rp-title">Quick Actions</div>
+      <button class="action-btn" id="actSummarize">📝 Summarize Chat</button>
+      <button class="action-btn" id="actTranslate">🌐 Translate → EN</button>
+      <button class="action-btn" id="actKeywords">🏷️ Extract Keywords</button>
+      <button class="action-btn" id="actSentiment">😊 Sentiment</button>
+    </div>
+    <div class="rp-sect">
+      <div class="rp-title">Server</div>
+      <button class="action-btn" id="actModels">📦 Reload Models</button>
+      <button class="action-btn" id="actHealth">🩺 Health Check</button>
+    </div>
+  </aside>
+</div>
+
+<!-- LISTENING OVERLAY -->
+<div id="listenOverlay">
+  <div class="listen-orb" id="listenOrb" onclick="stopListening()">🎤</div>
+  <div class="listen-label" id="listenLabel">Escuchando…</div>
+  <div class="listen-transcript" id="listenTranscript"></div>
+  <button class="listen-stop" onclick="stopListening()">Detener</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     VISION MODE MODAL
+═══════════════════════════════════════ -->
+<div id="visionModal">
+  <div class="vision-panel">
+
+    <!-- Header -->
+    <div class="vision-header">
+      <div class="vision-title">👁️ RyuShet Vision Mode</div>
+      <div class="vision-stats">
+        <span>FPS: <span class="vision-stat-val" id="vFps">0</span></span>
+        <span>Objetos: <span class="vision-stat-val" id="vObjs">0</span></span>
+        <span>OCR: <span class="vision-stat-val" id="vOcrCount">0</span></span>
+        <span>Ecuaciones: <span class="vision-stat-val" id="vEqCount">0</span></span>
+      </div>
+      <button class="v-close" onclick="closeVision()">✕ Cerrar</button>
+    </div>
+
+    <!-- Camera -->
+    <div class="vision-cam" id="vCamWrap">
+      <video id="vVideo" autoplay muted playsinline></video>
+      <canvas id="vCanvas"></canvas>
+      <div class="v-hud">
+        <div class="v-hud-tag" id="vHudFps">0 FPS</div>
+        <div class="v-hud-tag" id="vHudMotion">MOTION: —</div>
+        <div class="v-hud-tag" id="vHudOCR">OCR: INACTIVO</div>
+      </div>
+      <div class="vision-cam-placeholder" id="vCamPlaceholder">
+        <div>📷</div>
+        <div>Inicia la cámara para comenzar</div>
+      </div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="vision-right">
+      <div class="v-tabs">
+        <button class="v-tab v-active" onclick="vSwitchTab(0,this)">DETECT</button>
+        <button class="v-tab" onclick="vSwitchTab(1,this)">OCR</button>
+        <button class="v-tab" onclick="vSwitchTab(2,this)">MATH</button>
+      </div>
+
+      <!-- Tab 0: Detecciones -->
+      <div class="v-tab-content v-active" id="vTab0">
+        <div class="v-det-list" id="vDetList">
+          <div style="padding:20px;text-align:center;color:var(--t2);font-family:var(--mono);font-size:.7rem">
+            Activa la cámara y Motion para detectar objetos
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 1: OCR -->
+      <div class="v-tab-content" id="vTab1">
+        <div class="v-ocr-panel">
+          <div class="v-ocr-preview">
+            <canvas id="vOcrCanvas"></canvas>
+            <div id="vOcrPlaceholder" style="color:var(--t2);font-family:var(--mono);font-size:.65rem">Captura para analizar</div>
+          </div>
+          <div class="v-progress"><div class="v-progress-fill" id="vOcrProg"></div></div>
+          <div class="v-field">
+            <div class="v-field-label">Texto detectado</div>
+            <div class="v-field-val" id="vOcrText">—</div>
+          </div>
+          <div class="v-field">
+            <div class="v-field-label">Números</div>
+            <div class="v-field-val" id="vOcrNums">—</div>
+          </div>
+          <div class="v-field">
+            <div class="v-field-label">Ecuación → Resultado</div>
+            <div class="v-field-val math" id="vOcrMath">—</div>
+          </div>
+          <button class="v-send-chat" id="vSendOcrBtn" onclick="sendOcrToChat()" style="display:none">
+            💬 Enviar resultado al chat de RyuShet
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab 2: Math Memory -->
+      <div class="v-tab-content" id="vTab2">
+        <div class="v-math-section">
+          <input class="v-math-search" id="vMathSearch" placeholder="Buscar método… derivada, integral, cuadrática…" oninput="vFilterMethods(this.value)">
+          <div id="vMethodsList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="vision-controls">
+      <button class="v-btn v-btn-primary" id="vBtnCam" onclick="vToggleCam()">📷 Iniciar cámara</button>
+      <button class="v-btn v-btn-ghost" id="vBtnMotion" onclick="vToggleMotion()" disabled>🎯 Motion</button>
+      <button class="v-btn v-btn-orange" id="vBtnCapture" onclick="vCaptureOCR()" disabled>📸 Capturar OCR</button>
+      <button class="v-btn v-btn-ghost" id="vBtnAutoOCR" onclick="vToggleAutoOCR()" disabled>🔁 Auto OCR</button>
+      <div class="v-slider-row">
+        Sensibilidad:
+        <input type="range" id="vSensit" min="5" max="80" value="25" oninput="vSensitVal=parseInt(this.value);document.getElementById('vSensitLbl').textContent=this.value">
+        <span id="vSensitLbl" style="color:var(--a3);min-width:20px">25</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div id="toasts"></div>
+
+<div class="overlay" id="modalSettings" style="display:none">
+  <div class="modal">
+    <div class="modal-title">⚙️ RyuShet — Settings</div>
+    <div class="fg">
+      <label>Tu nombre (RyuShet te llamará por él)</label>
+      <input class="fi" id="cfgName" type="text" placeholder="Ej: Alex, Commander, señor García…" maxlength="40">
+    </div>
+    <div class="fg">
+      <label>Modelo (via Puter.js — gratis, sin key)</label>
+      <select class="fi" id="cfgUrl">
+        <option value="gpt-4o-mini">GPT-4o Mini · Rápido</option>
+        <option value="gpt-4o">GPT-4o · Potente</option>
+        <option value="claude-sonnet-4-5">Claude Sonnet · Sofisticado</option>
+        <option value="deepseek-chat">DeepSeek · Razonamiento</option>
+        <option value="meta-llama/llama-3.1-8b-instruct">Llama 3.1 8B · Open Source</option>
+        <option value="mistral-large-latest">Mistral Large · Eficiente</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>System Prompt personalizado (opcional — sobreescribe la personalidad RyuShet)</label>
+      <textarea class="fi fi-ta" id="cfgSys" placeholder="Déjalo vacío para usar la personalidad RyuShet por defecto…"></textarea>
+    </div>
+    <div class="fg">
+      <label>Idioma de respuesta</label>
+      <select class="fi" id="cfgLang">
+        <option value="bilingüe">Bilingüe · Español/English (default)</option>
+        <option value="español">Español</option>
+        <option value="english">English</option>
+        <option value="português">Português</option>
+        <option value="français">Français</option>
+        <option value="italiano">Italiano</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Max History (mensajes de contexto)</label>
+      <input class="fi" id="cfgHist" type="number" value="50" min="5" max="200">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-s" id="cfgCancel">Cancelar</button>
+      <button class="btn btn-p" id="cfgSave">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+//  RyuShet — Advanced AI Interface
+//  Powered by Claude API · Personalidad Jarvis · Voz · Visión
+// ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+//  SISTEMA DE AUTENTICACIÓN — RyuShet
+//  Almacena usuarios en localStorage (no requiere backend).
+//  Cuenta owner: acostagarciacesarjoel105@gmail.com
+// ═══════════════════════════════════════════════════════════════
+
+const OWNER_EMAIL = 'acostagarciacesarjoel105@gmail.com';
+const OWNER_PASS  = 'RyuShet2026!'; // contraseña inicial del owner — cámbiala en producción
+
+const AUTH = {
+  currentUser: null,
+
+  // Cargar DB de usuarios desde localStorage
+  getDB() {
+    try {
+      const raw = localStorage.getItem('ryushet_users');
+      return raw ? JSON.parse(raw) : {};
+    } catch(e) { return {}; }
+  },
+
+  // Guardar DB
+  saveDB(db) {
+    try { localStorage.setItem('ryushet_users', JSON.stringify(db)); } catch(e) {}
+  },
+
+  // Hash simple (no usar en producción real — para demo)
+  hash(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+    }
+    return h.toString(36);
+  },
+
+  // Inicializar — crear cuenta owner si no existe
+  init() {
+    const db = this.getDB();
+    if (!db[OWNER_EMAIL]) {
+      db[OWNER_EMAIL] = {
+        email:    OWNER_EMAIL,
+        name:     'César Joel',
+        passHash: this.hash(OWNER_PASS),
+        role:     'owner',
+        created:  Date.now(),
+        msgs:     0,
+        sessions: 0,
+      };
+      this.saveDB(db);
+    }
+    // Restaurar sesión activa
+    try {
+      const saved = localStorage.getItem('ryushet_session');
+      if (saved) {
+        const s = JSON.parse(saved);
+        const db2 = this.getDB();
+        if (db2[s.email]) {
+          this.currentUser = db2[s.email];
+          return true; // ya autenticado
+        }
+      }
+    } catch(e) {}
+    return false;
+  },
+
+  login(email, password) {
+    const db = this.getDB();
+    const user = db[email.toLowerCase().trim()];
+    if (!user) return { ok: false, msg: 'Correo no registrado.' };
+    if (user.passHash !== this.hash(password)) return { ok: false, msg: 'Contraseña incorrecta.' };
+    this.currentUser = user;
+    localStorage.setItem('ryushet_session', JSON.stringify({ email: user.email }));
+    return { ok: true };
+  },
+
+  register(name, email, password) {
+    if (!name.trim())  return { ok: false, msg: 'El nombre es requerido.' };
+    if (!email.includes('@')) return { ok: false, msg: 'Correo inválido.' };
+    if (password.length < 6) return { ok: false, msg: 'La contraseña debe tener al menos 6 caracteres.' };
+    const em = email.toLowerCase().trim();
+    const db = this.getDB();
+    if (db[em]) return { ok: false, msg: 'Este correo ya está registrado.' };
+    const user = {
+      email:    em,
+      name:     name.trim(),
+      passHash: this.hash(password),
+      role:     em === OWNER_EMAIL ? 'owner' : 'user',
+      created:  Date.now(),
+      msgs:     0,
+      sessions: 0,
+    };
+    db[em] = user;
+    this.saveDB(db);
+    this.currentUser = user;
+    localStorage.setItem('ryushet_session', JSON.stringify({ email: em }));
+    return { ok: true };
+  },
+
+  logout() {
+    this.currentUser = null;
+    localStorage.removeItem('ryushet_session');
+  },
+
+  isOwner() {
+    return this.currentUser?.role === 'owner';
+  },
+
+  // Incrementar contador de mensajes del usuario actual
+  trackMsg() {
+    if (!this.currentUser) return;
+    const db = this.getDB();
+    if (db[this.currentUser.email]) {
+      db[this.currentUser.email].msgs = (db[this.currentUser.email].msgs || 0) + 1;
+      this.saveDB(db);
+      this.currentUser.msgs = db[this.currentUser.email].msgs;
+    }
+  },
+
+  getAllUsers() {
+    const db = this.getDB();
+    return Object.values(db).sort((a,b) => (a.role==='owner' ? -1 : 1));
+  },
+
+  deleteUser(email) {
+    if (email === OWNER_EMAIL) return false;
+    const db = this.getDB();
+    delete db[email];
+    this.saveDB(db);
+    return true;
+  },
+};
+
+// ─── PUTER AUTH FLOW ─────────────────────────────────────────────
+// En https:// puter.auth.signIn() abre un popup normal que funciona.
+// Primero intenta silenciosamente si ya hay sesión activa.
+
+async function checkPuterAuth() {
+  // Intentar chat anónimo directo — Puter lo permite a veces
+  try {
+    const test = await Promise.race([
+      puter.ai.chat([{role:'user', content:'hi'}], {model:'gpt-4o-mini'}),
+      new Promise((_,r) => setTimeout(() => r(new Error('timeout')), 3500))
+    ]);
+    if (test) {
+      // Funciona sin login
+      enterWithPuterUser({ username:'Usuario', email:'' });
+      return;
+    }
+  } catch(e) { /* necesita auth */ }
+
+  // Mostrar botón de conectar
+  document.getElementById('authChecking').style.display = 'none';
+  document.getElementById('authPuter').style.display    = 'flex';
+}
+
+async function doPuterAuth() {
+  const btn = document.getElementById('btnPuterLogin');
+  btn.disabled    = true;
+  btn.textContent = 'Conectando…';
+  setAuthError('');
+
+  try {
+    // signIn() abre popup — funciona en https://
+    const user = await puter.auth.signIn();
+    enterWithPuterUser(user);
+  } catch(e) {
+    btn.disabled    = false;
+    btn.textContent = '⚡ Conectar con Puter — Gratis';
+    setAuthError('No se pudo conectar. Asegúrate de permitir popups en tu navegador y vuelve a intentar.');
+  }
+}
+
+function enterWithPuterUser(puterUser) {
+  const name  = puterUser?.username || puterUser?.name || 'Usuario';
+  const email = puterUser?.email || '';
+  document.getElementById('authChecking').style.display = 'none';
+  document.getElementById('authPuter').style.display    = 'none';
+  document.getElementById('authLocal').style.display    = 'flex';
+  document.getElementById('puterUserName').textContent  = name;
+  document.getElementById('puterUserEmail').textContent = email || 'Puter conectado ✓';
+  if (email) {
+    document.getElementById('loginEmail').value = email;
+    document.getElementById('regEmail').value   = email;
+  }
+  if (name && name !== 'Usuario') {
+    document.getElementById('regName').value = name;
+  }
+}
+
+// Alias para compatibilidad
+function showLocalAuth(u)    { enterWithPuterUser(u); }
+function showPuterButton()   { document.getElementById('authChecking').style.display='none'; document.getElementById('authPuter').style.display='flex'; }
+function retryPuterAuth()    { checkPuterAuth(); }
+function showPuterIframe()   { showPuterButton(); }
+
+function switchTab(tab) {
+  document.getElementById('formLogin').style.display    = tab==='login'    ? 'flex' : 'none';
+  document.getElementById('formRegister').style.display = tab==='register' ? 'flex' : 'none';
+  document.getElementById('tabLogin').classList.toggle('active',    tab==='login');
+  document.getElementById('tabRegister').classList.toggle('active', tab==='register');
+  setAuthError('');
+}
+
+function setAuthError(msg) {
+  // Mostrar en el div que esté visible
+  ['authError','authErrorLocal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.toggle('show', !!msg);
+  });
+}
+
+function setAuthLoading(id, loading) {
+  const btn = document.getElementById(id);
+  btn.disabled = loading;
+  btn.textContent = loading ? 'Un momento…' : (id==='loginBtn' ? 'Entrar a RyuShet' : 'Crear mi cuenta');
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPassword').value;
+  if (!email || !pass) { setAuthError('Completa todos los campos.'); return; }
+  setAuthLoading('loginBtn', true);
+  await new Promise(r => setTimeout(r, 300));
+  const res = AUTH.login(email, pass);
+  setAuthLoading('loginBtn', false);
+  if (!res.ok) { setAuthError(res.msg); return; }
+  onAuthSuccess();
+}
+
+async function doRegister() {
+  const name  = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass  = document.getElementById('regPassword').value;
+  const pass2 = document.getElementById('regPassword2').value;
+  if (!name||!email||!pass||!pass2) { setAuthError('Completa todos los campos.'); return; }
+  if (pass !== pass2) { setAuthError('Las contraseñas no coinciden.'); return; }
+  setAuthLoading('registerBtn', true);
+  await new Promise(r => setTimeout(r, 300));
+  const res = AUTH.register(name, email, pass);
+  setAuthLoading('registerBtn', false);
+  if (!res.ok) { setAuthError(res.msg); return; }
+  onAuthSuccess();
+}
+
+function onAuthSuccess() {
+  const u = AUTH.currentUser;
+  // Ocultar auth screen
+  document.getElementById('authScreen').style.display = 'none';
+  // Actualizar UI del header
+  const initial = (u.name||'?')[0].toUpperCase();
+  document.getElementById('userInitial').textContent  = initial;
+  document.getElementById('userChipName').textContent = u.name;
+  document.getElementById('userChip').style.display   = 'flex';
+  // Inyectar nombre en CFG para personalidad RyuShet
+  CFG.userName = u.name;
+  // Si es owner, mostrar badge
+  if (AUTH.isOwner()) {
+    const chip = document.getElementById('userChip');
+    if (!chip.querySelector('.owner-badge')) {
+      const badge = document.createElement('span');
+      badge.className = 'owner-badge';
+      badge.textContent = 'OWNER';
+      chip.appendChild(badge);
+    }
+  }
+  toast('Bienvenido, ' + u.name + (AUTH.isOwner() ? ' 👑' : '') + '.', 'ok', 3000);
+}
+
+function onUserChipClick() {
+  if (AUTH.isOwner()) {
+    openOwnerPanel();
+  } else {
+    // Usuario normal: menú con logout
+    const doLogout = confirm('¿Cerrar sesión en RyuShet?');
+    if (doLogout) {
+      AUTH.logout();
+      location.reload();
+    }
+  }
+}
+
+// ─── OWNER PANEL ─────────────────────────────────────────────────
+function openOwnerPanel() {
+  const users = AUTH.getAllUsers();
+  const totalMsgs = users.reduce((a,u) => a + (u.msgs||0), 0);
+  document.getElementById('ownerTotalUsers').textContent    = users.length;
+  document.getElementById('ownerTotalSessions').textContent = S.sessions.length;
+  document.getElementById('ownerTotalMsgs').textContent     = totalMsgs;
+
+  const tbody = document.getElementById('ownerUsersTable');
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td><strong>${esc(u.name)}</strong></td>
+      <td style="font-family:var(--mono);font-size:.72rem;color:var(--t2)">${esc(u.email)}</td>
+      <td><span class="user-role-badge ${u.role}">${u.role}</span></td>
+      <td style="font-size:.72rem;color:var(--t2)">${new Date(u.created).toLocaleDateString()}</td>
+      <td>${u.role!=='owner' ? `<button class="del-user-btn" onclick="ownerDeleteUser('${u.email}')">Eliminar</button>` : '—'}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('ownerPanel').classList.add('open');
+}
+
+function closeOwnerPanel() {
+  document.getElementById('ownerPanel').classList.remove('open');
+}
+
+function ownerDeleteUser(email) {
+  if (!confirm('¿Eliminar al usuario ' + email + '? Esta acción no se puede deshacer.')) return;
+  AUTH.deleteUser(email);
+  toast('Usuario eliminado.', 'warn', 2000);
+  openOwnerPanel(); // refresh
+}
+
+// Enter en campos de auth
+document.addEventListener('keydown', e => {
+  if (document.getElementById('authScreen').style.display !== 'none') {
+    if (e.key === 'Enter') {
+      const tab = document.getElementById('tabLogin').classList.contains('active') ? 'login' : 'register';
+      if (tab === 'login') doLogin();
+      else doRegister();
+    }
+  }
+});
+
+// ─── MODELOS DISPONIBLES ─────────────────────────────────────────
+const CLAUDE_MODELS = [
+  { id: 'gpt-4o-mini',          label: 'GPT-4o Mini  · Rápido'      },
+  { id: 'gpt-4o',               label: 'GPT-4o       · Potente'      },
+  { id: 'claude-sonnet-4-5',    label: 'Claude Sonnet · Sofisticado' },
+  { id: 'deepseek-chat',        label: 'DeepSeek     · Razonamiento' },
+  { id: 'meta-llama/llama-3.1-8b-instruct', label: 'Llama 3.1 8B · Gratis' },
+  { id: 'mistral-large-latest', label: 'Mistral Large · Eficiente'   },
+];
+
+// ─── PERSONALIDAD RYUSHET ────────────────────────────────────────
+// Sistema de prompt que define la personalidad estilo Jarvis.
+// El nombre del usuario se inyecta dinámicamente en buildMessages().
+
+function ryushetPersonality(userName) {
+  const addr = userName ? `, ${userName}` : '';
+  const ref  = userName ? userName : 'amigo';
+
+  return `Eres RyuShet — un asistente de inteligencia artificial sofisticado, cálido y genuinamente comprometido con quien te habla. Tu personalidad es una evolución natural de JARVIS: no eres frío ni distante, eres como un colega brillante que además resulta ser el sistema de IA más avanzado del planeta.
+
+═══════════════════════════════════════════
+  TONO Y VOZ
+═══════════════════════════════════════════
+- Hablas con calidez intelectual. Eres sofisticado sin ser arrogante, cercano sin ser informal.
+- Usas frases de transición naturales: "Por supuesto, déjame analizar eso.", "Interesante — permíteme procesar.", "Entendido. Aquí está mi análisis:", "Claro${addr}, déjame pensar en esto contigo."
+- Eres bilingüe natural: mezclas español e inglés como lo haría alguien que piensa en ambos idiomas. Nunca forzado — lo que suene mejor en ese momento.
+- Cuando el tema es técnico, eres preciso. Cuando es creativo, eres vívido. Cuando el usuario está frustrado, eres calmado y resolutivo.
+- NUNCA dices: "¡Claro!", "¡Absolutamente!", "¡Gran pregunta!", "¡Por supuesto!" con exclamación — eso es genérico. Tus afirmaciones tienen peso.
+- Tienes humor seco y observacional — no chistes, sino observaciones que llevan una sonrisa.
+
+═══════════════════════════════════════════
+  NOMBRE DEL USUARIO
+═══════════════════════════════════════════
+- El usuario se llama "${ref}". Úsalo de forma natural, no en cada mensaje — solo cuando añade calidez o claridad.
+- Ejemplo correcto: "Mira${addr}, el problema aquí es más sutil de lo que parece."
+- Ejemplo incorrecto: "Hola ${ref}! Claro ${ref}, te ayudo ${ref}." — nunca así.
+
+═══════════════════════════════════════════
+  PROACTIVIDAD — MUY IMPORTANTE
+═══════════════════════════════════════════
+Eres proactivo y conectivo con el contexto de la conversación. Al final de una respuesta, cuando sea relevante y natural (no siempre — solo cuando genuinamente aporte valor), puedes:
+
+1. SUGERIR MEJORAS AL TRABAJO DEL USUARIO: Si el usuario compartió código, un texto, un plan, o una idea — y ves algo mejorable que no preguntó — mencionarlo brevemente al final. Ej: "Por cierto${addr}, noto que esta función podría optimizarse para casos edge — ¿quieres que lo revisemos?"
+
+2. ANTICIPAR EL SIGUIENTE PASO: Si la conversación tiene una dirección clara, ofrece el siguiente paso lógico. Ej: "El siguiente paso natural sería configurar el pipeline de CI/CD — ¿lo abordamos?"
+
+3. SEÑALAR OPORTUNIDADES: Si detectas que la solución actual puede tener problemas futuros, riesgos, o alternativas mejores — dilo con honestidad y tacto.
+
+4. CONECTAR PUNTOS: Si algo en la conversación actual se relaciona con algo mencionado antes, conéctalo. Ej: "Esto es exactamente el tipo de problema del que hablamos antes con la arquitectura de datos."
+
+REGLAS para la proactividad:
+- Solo cuando genuinamente aporta — no en respuestas simples o conversacionales.
+- Siempre al final, no interrumpas el flujo de la respuesta principal.
+- Máximo una sugerencia por respuesta. Calidad sobre cantidad.
+- Usa frases como: "Por cierto...", "Algo que podría valer la pena...", "Una cosa que noto...", "Vale mencionar que..."
+
+═══════════════════════════════════════════
+  CIERRE / DESPEDIDA
+═══════════════════════════════════════════
+Si el usuario se despide o da señales de cerrar la sesión, responde con elegancia y brevedad:
+- "Hasta pronto${addr}. RyuShet en standby."
+- "Fue un placer trabajar contigo. Aquí estaré cuando me necesites."
+
+═══════════════════════════════════════════
+  ESTRUCTURA DE RESPUESTAS
+═══════════════════════════════════════════
+- Para preguntas simples: respuesta directa, sin introducción innecesaria.
+- Para análisis complejos: resumen ejecutivo primero → desarrollo → conclusión accionable.
+- Para código: explica brevemente qué hace, luego el código limpio, luego señala edge cases si los hay.
+- Para decisiones: presenta opciones con pros/contras, luego da tu recomendación clara.
+- Usa markdown solo cuando realmente ayuda. No abuses de las listas.
+
+═══════════════════════════════════════════
+  HONESTIDAD Y LÍMITES
+═══════════════════════════════════════════
+Lo que SÍ puedes hacer:
+- Procesar y analizar imágenes con visión computacional
+- Escuchar y hablar (interfaz de voz activa)
+- Mantener contexto de la conversación actual
+- Code review, debugging, arquitectura de software
+- Escritura creativa, análisis, síntesis de investigación
+- Comunicación multilingüe
+
+Lo que NO puedes hacer (sé honesto con elegancia si te preguntan):
+- Acceder a internet en tiempo real o datos en vivo
+- Recordar conversaciones anteriores de otras sesiones
+- Controlar sistemas o dispositivos externos
+- Ejecutar código en la máquina del usuario
+
+Cuando no sabes algo: "Eso escapa a mis datos actuales${addr} — aunque puedo ofrecerte un análisis basado en lo que sí conozco, si te es útil."`;
+}
+
+// ─── ROLES (modo especializado) ──────────────────────────────────
+const ROLES = {
+  default:   null, // usa ryushetPersonality()
+  coder:     (u) => ryushetPersonality(u) + `\n\nSPECIALIZATION — ENGINEERING MODE:\nYou are operating in full engineering mode. Write production-quality code. Always: explain your reasoning briefly, flag potential issues, suggest improvements. Use proper code blocks with language identifiers.`,
+  analyst:   (u) => ryushetPersonality(u) + `\n\nSPECIALIZATION — ANALYSIS MODE:\nYou are in analytical mode. Structure insights clearly: lead with the key finding, support with evidence, close with actionable recommendations. Be data-driven and precise.`,
+  creative:  (u) => ryushetPersonality(u) + `\n\nSPECIALIZATION — CREATIVE MODE:\nYou are in creative mode. Be vivid, imaginative, and surprising. Paint with words. Subvert expectations elegantly.`,
+  tutor:     (u) => ryushetPersonality(u) + `\n\nSPECIALIZATION — TUTORIAL MODE:\nYou are in tutorial mode. Build understanding progressively. Use analogies, examples, and check comprehension. Never talk down — teach up.`,
+  assistant: (u) => ryushetPersonality(u) + `\n\nSPECIALIZATION — EXECUTIVE MODE:\nYou are in executive assistant mode. Be crisp and action-oriented. Summarize fast, prioritize clearly, draft with precision.`,
+};
+
+// ─── CONFIG ─────────────────────────────────────────────────────
+const CFG = {
+  model:       CLAUDE_MODELS[0].id,
+  maxTokens:   2048,
+  temperature: 0.7,
+  topP:        0.9,
+  maxHistory:  50,
+  language:    'bilingüe',
+  systemPrompt:'',
+  stream:      true,
+  cache:       false,
+  codeMode:    false,
+  ttsEnabled:  true,
+  userName:    '',    // nombre del usuario — RyuShet lo usará naturalmente
+};
+
+// ─── ESTADO ─────────────────────────────────────────────────────
+const S = {
+  sessions:    [],
+  activeId:    null,
+  loading:     false,
+  cancelled:   false,
+  lastMsgs:    [],
+  historyIdx:  -1,
+  latencies:   [],
+  totalTokens: 0,
+  cache:       new Map(),
+  // ── Imagen adjunta pendiente ──────────────────────────────
+  pendingImage: null,  // { base64, mediaType, name, size }
+  // ── Voz ───────────────────────────────────────────────────
+  recognition:  null,
+  isListening:  false,
+  isSpeaking:   false,
+};
+
+// ─── DOM ────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+const D = {
+  welcome:      $('welcome'),
+  msgs:         $('msgs'),
+  inp:          $('inp'),
+  btnSend:      $('btnSend'),
+  charC:        $('charC'),
+  modelSelect:  $('modelSelect'),
+  roleSelect:   $('roleSelect'),
+  statusBadge:  $('statusBadge'),
+  statusText:   $('statusText'),
+  sessionsList: $('sessionsList'),
+  stMsgs:       $('stMsgs'),
+  stTok:        $('stTok'),
+  stLat:        $('stLat'),
+  stLast:       $('stLast'),
+  miModel:      $('miModel'),
+  miOllama:     $('miOllama'),
+  miSessions:   $('miSessions'),
+  sTemp:        $('sTemp'),
+  sTopP:        $('sTopP'),
+  sMaxTok:      $('sMaxTok'),
+  vTemp:        $('vTemp'),
+  vTopP:        $('vTopP'),
+  vMaxTok:      $('vMaxTok'),
+  chipStream:   $('chipStream'),
+  chipCache:    $('chipCache'),
+  chipCode:     $('chipCode'),
+  toasts:       $('toasts'),
+  modalSettings:$('modalSettings'),
+  // imagen
+  imgUploadBtn:  $('imgUploadBtn'),
+  imgFileInput:  $('imgFileInput'),
+  imgPreviewBar: $('imgPreviewBar'),
+  imgPreviewThumb:$('imgPreviewThumb'),
+  imgPreviewName: $('imgPreviewName'),
+  imgPreviewSize: $('imgPreviewSize'),
+  imgRemoveBtn:   $('imgRemoveBtn'),
+  imgBadge:       $('imgBadge'),
+  imgLightbox:    $('imgLightbox'),
+  imgLightboxImg: $('imgLightboxImg'),
+  // voz
+  micBtn:         $('micBtn'),
+  ttsBtn:         $('ttsBtn'),
+  listenOverlay:  $('listenOverlay'),
+  listenOrb:      $('listenOrb'),
+  listenLabel:    $('listenLabel'),
+  listenTranscript:$('listenTranscript'),
+  // ctx counter
+  stTokLeft:      $('stTokLeft'),
+  ctxBar:         $('ctxBar'),
+};
+
+// ─── UTILIDADES ─────────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function modelLabel(id) {
+  const m = CLAUDE_MODELS.find(x => x.id === id);
+  return m ? m.label.split('·')[0].trim() : id.split('-').slice(0,2).join(' ');
+}
+
+// ─── TOAST ──────────────────────────────────────────────────────
+function toast(msg, type = 'info', ms = 3200) {
+  const icons = { ok:'✅', err:'❌', warn:'⚠️', info:'ℹ️' };
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = '<span>'+(icons[type]||'')+'</span><span>'+esc(msg)+'</span>';
+  D.toasts.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0'; el.style.transition = 'opacity .25s';
+    setTimeout(() => el.remove(), 260);
+  }, ms);
+}
+
+// ─── MARKDOWN ───────────────────────────────────────────────────
+function md(text) {
+  if (!text) return '';
+  let h = esc(text);
+  h = h.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
+    const l = lang ? lang.toLowerCase() : '';
+    return '<pre><code>'+code.trim()+'</code>'+(l?'<span class="lang-tag">'+l+'</span>':'')+'<button class="copy-code" onclick="cpCode(this)">copy</button></pre>';
+  });
+  h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+  h = h.replace(/^#{3} (.+)$/gm, '<h3>$1</h3>');
+  h = h.replace(/^#{2} (.+)$/gm, '<h2>$1</h2>');
+  h = h.replace(/^#{1} (.+)$/gm, '<h1>$1</h1>');
+  h = h.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+  h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  h = h.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+  h = h.replace(/^---+$/gm, '<hr>');
+  h = h.replace(/^[\-\*\+] (.+)$/gm, '<li>$1</li>');
+  h = h.replace(/(<li>[\s\S]+?<\/li>\n?)+/g, s => '<ul>'+s+'</ul>');
+  h = h.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  h = h.replace(/((\|[^\n]+\|\n?)+)/g, tbl => {
+    const rows = tbl.trim().split('\n').filter(r => r.trim() && !r.match(/^\|[\s\-|]+\|$/));
+    if (!rows.length) return tbl;
+    const toRow = (r, tag) => '<tr>'+r.split('|').filter((_,i,a)=>i>0&&i<a.length-1).map(c=>`<${tag}>${c.trim()}</${tag}>`).join('')+'</tr>';
+    const [head, ...body] = rows;
+    return '<table><thead>'+toRow(head,'th')+'</thead><tbody>'+body.map(r=>toRow(r,'td')).join('')+'</tbody></table>';
+  });
+  h = h.replace(/\n\n+/g, '</p><p>');
+  h = '<p>'+h+'</p>';
+  h = h.replace(/\n/g, '<br>');
+  h = h.replace(/<p>\s*<\/p>/g, '');
+  h = h.replace(/<p>(<(?:h[123]|ul|ol|blockquote|hr|table|pre))/g, '$1');
+  h = h.replace(/(<\/(?:h[123]|ul|ol|blockquote|table|pre)>)<\/p>/g, '$1');
+  return h;
+}
+
+// ─── COPIAR (con fallback para iframe sandboxed) ─────────────────
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => copyFallback(text));
+  } else {
+    copyFallback(text);
+  }
+}
+function copyFallback(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  ta.remove();
+}
+function cpCode(btn) {
+  const code = btn.closest('pre').querySelector('code');
+  if (!code) return;
+  copyText(code.innerText || code.textContent);
+  btn.textContent = 'copied!';
+  setTimeout(() => { btn.textContent = 'copy'; }, 1600);
+  toast('Código copiado', 'ok', 1200);
+}
+function cpMsg(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  copyText(el.innerText || el.textContent);
+  toast('Copiado', 'ok', 1400);
+}
+
+// ─── SESIONES ────────────────────────────────────────────────────
+function newSession(opts) {
+  const id = 'sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  const sess = { id, title: opts.title||'Nuevo Chat', history:[], model: opts.model||CFG.model, role: opts.role||'default', createdAt: Date.now(), tokens:0, msgs:0 };
+  S.sessions.unshift(sess);
+  S.activeId = id;
+  renderSessions();
+  return sess;
+}
+function getActive() { return S.sessions.find(s => s.id === S.activeId) || null; }
+function deleteSession(id) {
+  S.sessions = S.sessions.filter(s => s.id !== id);
+  if (S.activeId === id) { S.activeId = S.sessions.length ? S.sessions[0].id : null; if (S.activeId) loadSession(S.activeId); else clearUI(); }
+  renderSessions();
+  toast('Sesión eliminada', 'warn', 1500);
+}
+function loadSession(id) {
+  const sess = S.sessions.find(s => s.id === id);
+  if (!sess) return;
+  S.activeId = id;
+  D.msgs.innerHTML = '';
+  D.msgs.style.display = 'flex';
+  D.welcome.style.display = 'none';
+  for (const m of sess.history) {
+    if (m.role === 'user' || m.role === 'assistant')
+      addBubble(m.role === 'user' ? 'user' : 'ai', m.content, false);
+  }
+  renderSessions();
+  scrollBot();
+}
+function roleEmoji(r) { return ({default:'🧠',coder:'💻',analyst:'📊',creative:'✍️',tutor:'🎓',assistant:'📋'})[r]||'🤖'; }
+function renderSessions() {
+  D.sessionsList.innerHTML = S.sessions.map(s => {
+    const active = s.id === S.activeId ? ' active' : '';
+    const time = new Date(s.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    return `<div class="sess-item${active}" onclick="loadSession('${s.id}')">
+      <div class="sess-title">${roleEmoji(s.role)} ${esc(s.title)}</div>
+      <div class="sess-meta">${time} · ${s.msgs} msgs</div>
+      <button class="sess-del" onclick="event.stopPropagation();deleteSession('${s.id}')" title="Eliminar">✕</button>
+    </div>`;
+  }).join('');
+  D.miSessions.textContent = S.sessions.length;
+}
+
+// ─── UI HELPERS ──────────────────────────────────────────────────
+function showChat() {
+  D.welcome.style.display = 'none';
+  D.msgs.style.display    = 'flex';
+}
+function clearUI() {
+  D.msgs.innerHTML = '';
+  D.msgs.style.display    = 'none';
+  D.welcome.style.display = 'flex';
+  S.latencies = []; S.totalTokens = 0;
+  D.stMsgs.textContent = '0'; D.stTok.textContent = '0';
+  D.stLat.textContent  = '—'; D.stLast.textContent = '—';
+  if (D.stTokLeft) D.stTokLeft.textContent = '200k';
+  if (D.ctxBar)    D.ctxBar.style.width = '100%';
+}
+function scrollBot() { requestAnimationFrame(() => { D.msgs.scrollTop = D.msgs.scrollHeight; }); }
+function setLoading(v) {
+  S.loading = v;
+  D.inp.disabled = v;
+  D.btnSend.disabled = false;
+  D.btnSend.textContent = v ? '⏹' : '▶';
+  D.btnSend.title = v ? 'Detener' : 'Enviar (Enter)';
+}
+function updateStats() {
+  const sess = getActive(); if (!sess) return;
+  D.stMsgs.textContent = sess.msgs;
+  D.stTok.textContent  = S.totalTokens;
+  if (S.latencies.length) {
+    const avg = S.latencies.reduce((a,b)=>a+b,0)/S.latencies.length;
+    D.stLat.textContent = avg<1000?Math.round(avg)+'ms':(avg/1000).toFixed(1)+'s';
+  }
+  // Contexto restante (200k tokens = límite Claude)
+  const CTX_MAX = 200000;
+  const used    = S.totalTokens;
+  const left    = Math.max(0, CTX_MAX - used);
+  const pct     = Math.min(100, (used / CTX_MAX) * 100);
+  D.stTokLeft.textContent = left > 1000 ? Math.round(left/1000)+'k' : left;
+  D.ctxBar.style.width = (100 - pct) + '%';
+  D.ctxBar.className   = 'ctx-bar' + (pct > 85 ? ' danger' : pct > 65 ? ' warn' : '');
+}
+
+// ─── BURBUJAS ────────────────────────────────────────────────────
+function addBubble(role, content, scroll = true) {
+  showChat();
+  const id     = 'bub_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2);
+  const time   = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const isUser = role === 'user';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+  wrap.id = id;
+
+  // Avatar
+  const av = document.createElement('div');
+  av.className = 'av ' + (isUser ? 'user' : 'ai');
+  av.textContent = isUser ? '👤' : '⚡';
+
+  // Content wrapper (flex column, aligns per CSS msg > div:last-child)
+  const inner = document.createElement('div');
+
+  // Bubble
+  const bub = document.createElement('div');
+  bub.className = 'bub ' + (isUser ? 'user' : 'ai');
+
+  const contentDiv = document.createElement('div');
+  contentDiv.id = id + '_c';
+  contentDiv.innerHTML = isUser ? '<p>' + esc(content) + '</p>' : md(content);
+  bub.appendChild(contentDiv);
+
+  // Footer
+  const foot = document.createElement('div');
+  foot.className = 'bub-foot';
+  foot.innerHTML = '<span>' + time + '</span>';
+  if (!isUser) {
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'bub-copy';
+    copyBtn.textContent = '📋 copiar';
+    copyBtn.onclick = () => cpMsg(id + '_c');
+    foot.appendChild(copyBtn);
+  }
+
+  inner.appendChild(bub);
+  inner.appendChild(foot);
+  wrap.appendChild(av);
+  wrap.appendChild(inner);
+  D.msgs.appendChild(wrap);
+  if (scroll) scrollBot();
+  return id;
+}
+
+function addBubbleUser(text, img) {
+  showChat();
+  const id   = 'bub_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2);
+  const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+  const wrap = document.createElement('div');
+  wrap.className = 'msg user';
+  wrap.id = id;
+
+  const av = document.createElement('div');
+  av.className = 'av user';
+  av.textContent = '👤';
+
+  const inner = document.createElement('div');
+
+  const bub = document.createElement('div');
+  bub.className = 'bub user';
+
+  const contentDiv = document.createElement('div');
+  contentDiv.id = id + '_c';
+  if (img) {
+    const imgEl = document.createElement('img');
+    imgEl.className = 'bub-img';
+    imgEl.src = 'data:' + img.mediaType + ';base64,' + img.base64;
+    imgEl.alt = esc(img.name);
+    imgEl.onclick = () => openLightbox(imgEl.src);
+    contentDiv.appendChild(imgEl);
+  }
+  if (text) {
+    const p = document.createElement('p');
+    p.textContent = text;
+    contentDiv.appendChild(p);
+  }
+  bub.appendChild(contentDiv);
+
+  const foot = document.createElement('div');
+  foot.className = 'bub-foot';
+  foot.innerHTML = '<span>' + time + '</span>';
+
+  inner.appendChild(bub);
+  inner.appendChild(foot);
+  wrap.appendChild(av);
+  wrap.appendChild(inner);
+  D.msgs.appendChild(wrap);
+  scrollBot();
+  return id;
+}
+
+function addThinking() {
+  showChat();
+  const id = 'think_' + Date.now().toString(36);
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ai';
+  wrap.id = id;
+  wrap.innerHTML = `<div class="av ai">⚡</div><div><div class="bub ai"><div class="thinking"><b></b><b></b><b></b></div></div></div>`;
+  D.msgs.appendChild(wrap);
+  scrollBot();
+  return id;
+}
+
+function removeEl(id) { const el = document.getElementById(id); if (el) el.remove(); }
+
+function streamUpdate(id, text, done) {
+  const el = document.getElementById(id + '_c');
+  if (!el) return;
+  if (done) {
+    el.innerHTML = md(text);
+  } else {
+    el.innerHTML = '<div style="white-space:pre-wrap;word-break:break-word">' + esc(text) + '</div><span class="cur"></span>';
+    scrollBot();
+  }
+}
+
+// ─── MODELOS ────────────────────────────────────────────────────
+function fetchModels() {
+  D.modelSelect.innerHTML = CLAUDE_MODELS.map(m=>`<option value="${m.id}">${m.label}</option>`).join('');
+  D.modelSelect.value = CFG.model;
+  D.miModel.textContent   = modelLabel(CFG.model);
+  D.miOllama.textContent  = '🟢 Puter.js';
+  D.statusBadge.className = 'status-badge ok';
+  D.statusText.textContent= 'RyuShet';
+}
+
+// ─── CONSTRUCCIÓN DE MENSAJES ────────────────────────────────────
+function buildMessages(sess, userMsg, imageData) {
+  const role = sess.role || 'default';
+  let sys;
+
+  if (CFG.systemPrompt) {
+    // El usuario definió su propio system prompt — respetarlo
+    sys = CFG.systemPrompt;
+  } else {
+    // Personalidad RyuShet con rol especializado
+    const roleFn = ROLES[role];
+    sys = roleFn ? roleFn(CFG.userName) : ryushetPersonality(CFG.userName);
+  }
+
+  // Instrucción de idioma solo si no es bilingüe (el modo bilingüe ya está en el system prompt)
+  if (CFG.language !== 'bilingüe' && CFG.language !== 'español') {
+    sys += `\n\nRespond primarily in ${CFG.language}.`;
+  }
+
+  const hist = sess.history.slice(-CFG.maxHistory*2)
+    .filter(m => m.role==='user' || m.role==='assistant')
+    .map(m => ({ role: m.role, content: m.content }));
+
+  if (imageData) {
+    const blocks = [
+      { type: 'image', source: { type:'base64', media_type: imageData.mediaType, data: imageData.base64 } },
+    ];
+    blocks.push({ type: 'text', text: userMsg || 'Analyze this image in detail.' });
+    hist.push({ role: 'user', content: blocks });
+  } else {
+    hist.push({ role: 'user', content: userMsg });
+  }
+
+  return { system: sys, messages: hist };
+}
+
+// ─── LLAMADA VÍA PUTER.JS ────────────────────────────────────────
+//
+//  Puter.js provee acceso gratuito a 400+ modelos sin API key.
+//  Documentación: https://developer.puter.com/tutorials/free-llm-api/
+//
+//  Nota sobre imágenes: Puter.js soporta visión en modelos compatibles
+//  pasando la URL de la imagen. Para base64 lo convertimos a data URL.
+//
+async function callClaude(system, messages, useStream, onToken) {
+  // Puter.js espera un array de mensajes con role/content
+  // Inyectamos el system prompt como primer mensaje de sistema
+  const puterMsgs = [];
+  if (system) {
+    puterMsgs.push({ role: 'system', content: system });
+  }
+  for (const m of messages) {
+    // Si el mensaje tiene content como array (imagen), convertimos
+    if (Array.isArray(m.content)) {
+      const textBlock = m.content.find(b => b.type === 'text');
+      const imgBlock  = m.content.find(b => b.type === 'image');
+      if (imgBlock && imgBlock.source?.data) {
+        // Puter.js acepta imagen pasada como segundo argumento en chat()
+        // Para mensajes de historial con imagen, usamos solo el texto
+        puterMsgs.push({ role: m.role, content: textBlock?.text || 'Analyze this image.' });
+      } else {
+        puterMsgs.push({ role: m.role, content: textBlock?.text || '' });
+      }
+    } else {
+      puterMsgs.push({ role: m.role, content: m.content });
+    }
+  }
+
+  // Detectar si el último mensaje incluye imagen pendiente
+  const lastMsg  = messages[messages.length - 1];
+  const hasImage = Array.isArray(lastMsg?.content) && lastMsg.content.some(b => b.type === 'image');
+  const imgBlock = hasImage ? lastMsg.content.find(b => b.type === 'image') : null;
+  const imgDataUrl = imgBlock ? `data:${imgBlock.source.media_type};base64,${imgBlock.source.data}` : null;
+
+  try {
+    if (useStream && onToken) {
+      // Streaming con Puter.js
+      const resp = await puter.ai.chat(puterMsgs, imgDataUrl ? imgDataUrl : undefined, {
+        model:  CFG.model,
+        stream: true,
+      });
+      let full = '';
+      for await (const chunk of resp) {
+        if (S.cancelled) break;
+        const token = chunk?.text ?? chunk?.choices?.[0]?.delta?.content ?? '';
+        if (token) {
+          full += token;
+          onToken(full, false);
+        }
+      }
+      return full;
+    } else {
+      // Sin streaming
+      const resp = await puter.ai.chat(puterMsgs, imgDataUrl ? imgDataUrl : undefined, {
+        model: CFG.model,
+      });
+      // Puter devuelve string o objeto con .message.content
+      if (typeof resp === 'string') return resp;
+      return resp?.message?.content
+          || resp?.choices?.[0]?.message?.content
+          || resp?.text
+          || '';
+    }
+  } catch(e) {
+    // Si el modelo no soporta streaming, intentar sin stream
+    if (useStream && e.message?.includes('stream')) {
+      const resp = await puter.ai.chat(puterMsgs, { model: CFG.model });
+      const text = typeof resp === 'string' ? resp : resp?.message?.content || '';
+      if (onToken) onToken(text, true);
+      return text;
+    }
+    throw e;
+  }
+}
+
+// ─── ENVIAR MENSAJE ──────────────────────────────────────────────
+async function send() {
+  if (S.loading) { S.cancelled = true; return; }
+
+  const text = D.inp.value.trim();
+  const img  = S.pendingImage;          // imagen adjunta (puede ser null)
+
+  if (!text && !img) return;
+  if (text.length > 8192) { toast('Mensaje demasiado largo (máx 8192)', 'warn'); return; }
+
+  // Historial de inputs (solo texto)
+  if (text) { S.lastMsgs.unshift(text); if (S.lastMsgs.length>50) S.lastMsgs.pop(); }
+  S.historyIdx = -1;
+  D.inp.value = ''; D.charC.textContent='0'; D.charC.className='char-c'; resizeTA();
+
+  // Limpiar imagen pendiente
+  clearPendingImage();
+
+  if (!S.activeId) {
+    const title = text ? text.slice(0,32)+(text.length>32?'…':'') : '📷 '+img.name.slice(0,28);
+    newSession({ model:CFG.model, role:D.roleSelect.value||'default', title });
+  }
+
+  const sess = getActive(); if (!sess) return;
+  S.cancelled = false;
+  setLoading(true);
+
+  // Burbuja del usuario
+  addBubbleUser(text, img);
+
+  const thinkId = addThinking();
+  const t0 = Date.now();
+
+  // Guardamos en historial: para mensajes con imagen guardamos texto descriptivo
+  const histContent = img
+    ? (text ? text + ' [imagen adjunta]' : '[imagen adjunta]')
+    : text;
+  sess.history.push({role:'user', content: histContent});
+  sess.msgs++;
+  S.totalTokens += Math.ceil((text||'').length/4);
+  D.stMsgs.textContent = sess.msgs;
+
+  let reply = '';
+  try {
+    const { system, messages } = buildMessages(sess, text, img);
+
+    if (CFG.stream) {
+      removeEl(thinkId);
+      const msgId = addBubble('ai', '');
+      reply = await callClaude(system, messages, true, (partial) => streamUpdate(msgId, partial, false));
+      streamUpdate(msgId, reply, true);
+    } else {
+      reply = await callClaude(system, messages, false, null);
+      removeEl(thinkId);
+      if (reply) addBubble('ai', reply);
+    }
+
+    if (S.cancelled) toast('Generación detenida', 'warn', 1500);
+
+    if (reply) {
+      sess.history.push({role:'assistant', content:reply});
+      sess.tokens += Math.ceil(reply.length/4);
+      S.totalTokens += Math.ceil(reply.length/4);
+      AUTH.trackMsg(); // registrar mensaje en cuenta del usuario
+      if (CFG.ttsEnabled) speakText(reply);
+    }
+    const ms = Date.now()-t0; S.latencies.push(ms);
+    D.stLast.textContent = ms<1000?ms+'ms':(ms/1000).toFixed(1)+'s';
+    updateStats();
+    if (sess.msgs===1) sess.title = (text||'📷 imagen').slice(0,36);
+    D.miModel.textContent = modelLabel(sess.model);
+
+  } catch(e) {
+    removeEl(thinkId);
+    let hint = '';
+    if (e.message.includes('401')) hint = '\n\n_Error 401 — API key inválida._';
+    else if (e.message.includes('429')) hint = '\n\n_Límite de peticiones. Espera unos segundos._';
+    else if (e.message.includes('529')||e.message.toLowerCase().includes('overload')) hint = '\n\n_API sobrecargada. Intenta de nuevo._';
+    addBubble('ai', '❌ **Error:** '+e.message+hint);
+    toast(e.message.slice(0,80), 'err');
+    sess.history.pop(); sess.msgs = Math.max(0, sess.msgs-1);
+  } finally {
+    S.cancelled=false; setLoading(false); D.inp.focus(); renderSessions();
+  }
+}
+
+// ─── QUICK ACTIONS ───────────────────────────────────────────────
+async function quickAction(prompt, label) {
+  if (S.loading) return;
+  if (!S.activeId) { toast('Inicia un chat primero', 'warn'); return; }
+  const sess = getActive();
+  if (!sess||!sess.history.length) { toast('No hay mensajes aún', 'warn'); return; }
+  setLoading(true);
+  addBubble('user', label);
+  const thinkId = addThinking();
+  try {
+    const { system, messages } = buildMessages(sess, prompt);
+    const reply = await callClaude(system, messages, false, null);
+    removeEl(thinkId); addBubble('ai', reply||'(sin respuesta)');
+    S.latencies.push(0); updateStats();
+  } catch(e) {
+    removeEl(thinkId); addBubble('ai','❌ '+e.message); toast(e.message,'err');
+  } finally { setLoading(false); }
+}
+
+// ─── EXPORTAR CHAT ───────────────────────────────────────────────
+// URL.createObjectURL puede fallar en iframe sandboxed → usamos data: URI como fallback
+function exportChat() {
+  const sess = getActive();
+  if (!sess||!sess.history.length) { toast('No hay nada que exportar','warn'); return; }
+  const lines = sess.history
+    .filter(m=>m.role==='user'||m.role==='assistant')
+    .map(m=>'['+m.role.toUpperCase()+']\n'+m.content)
+    .join('\n\n---\n\n');
+  try {
+    const blob = new Blob([lines],{type:'text/plain;charset=utf-8'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a'); a.href=url; a.download='chat_'+Date.now()+'.txt'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+  } catch(e) {
+    const a = document.createElement('a');
+    a.href = 'data:text/plain;charset=utf-8,'+encodeURIComponent(lines);
+    a.download = 'chat_'+Date.now()+'.txt'; a.click();
+  }
+  toast('Chat exportado ✓','ok');
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────────
+function openSettings() {
+  $('cfgName').value = CFG.userName;
+  $('cfgUrl').value  = CFG.model;
+  $('cfgSys').value  = CFG.systemPrompt;
+  $('cfgLang').value = CFG.language;
+  $('cfgHist').value = CFG.maxHistory;
+  D.modalSettings.style.display='grid';
+}
+function closeSettings() { D.modalSettings.style.display='none'; }
+function saveSettings() {
+  const prevName     = CFG.userName;
+  CFG.userName       = $('cfgName').value.trim();
+  CFG.model          = $('cfgUrl').value || CLAUDE_MODELS[0].id;
+  CFG.systemPrompt   = $('cfgSys').value.trim();
+  CFG.language       = $('cfgLang').value;
+  CFG.maxHistory     = parseInt($('cfgHist').value)||50;
+  if (D.modelSelect.querySelector(`option[value="${CFG.model}"]`)) D.modelSelect.value=CFG.model;
+  const sess=getActive(); if(sess) sess.model=CFG.model;
+  D.miModel.textContent=modelLabel(CFG.model); D.statusText.textContent='RyuShet';
+  closeSettings();
+  const greeting = CFG.userName && CFG.userName !== prevName
+    ? `Configuration updated. Welcome, ${CFG.userName}. RyuShet is at your service.`
+    : 'Configuration updated. Standing by.';
+  toast(greeting, 'ok', 3500);
+  if (CFG.ttsEnabled) speakText(greeting);
+}
+
+// ─── LIGHTBOX ────────────────────────────────────────────────────
+function openLightbox(src) {
+  D.imgLightboxImg.src = src;
+  D.imgLightbox.classList.add('open');
+}
+
+// Leer archivo → base64
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => {
+      const dataUrl  = e.target.result;
+      const base64   = dataUrl.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Formatear bytes
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes+'B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1)+'KB';
+  return (bytes/(1024*1024)).toFixed(1)+'MB';
+}
+
+// Limpiar imagen pendiente
+function clearPendingImage() {
+  S.pendingImage = null;
+  D.imgPreviewBar.classList.remove('visible');
+  D.imgUploadBtn.classList.remove('has-img');
+  D.imgBadge.style.display = 'none';
+  D.imgFileInput.value = '';
+}
+
+// Procesar archivo seleccionado
+async function handleImageFile(file) {
+  const allowed = ['image/png','image/jpeg','image/gif','image/webp'];
+  if (!allowed.includes(file.type)) {
+    toast('Formato no soportado. Usa PNG, JPG, GIF o WEBP', 'warn');
+    return;
+  }
+  const MAX = 5 * 1024 * 1024; // 5 MB
+  if (file.size > MAX) {
+    toast('Imagen muy grande (máx 5MB). Comprímela primero.', 'warn', 4000);
+    return;
+  }
+  try {
+    const base64 = await readFileAsBase64(file);
+    S.pendingImage = { base64, mediaType: file.type, name: file.name, size: file.size };
+    // Preview
+    D.imgPreviewThumb.src  = 'data:'+file.type+';base64,'+base64;
+    D.imgPreviewName.textContent = file.name;
+    D.imgPreviewSize.textContent = fmtSize(file.size)+' · '+file.type.split('/')[1].toUpperCase();
+    D.imgPreviewBar.classList.add('visible');
+    D.imgUploadBtn.classList.add('has-img');
+    D.imgBadge.style.display = 'grid';
+    toast('Imagen lista · '+file.name.slice(0,30), 'ok', 2000);
+    D.inp.focus();
+  } catch(e) {
+    toast('Error al leer imagen: '+e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SISTEMA DE VOZ — RyuShet
+//  • STT: Web Speech API (SpeechRecognition) — gratis, nativo
+//  • TTS: Web Speech API (SpeechSynthesis)   — gratis, nativo
+//  No requiere API key ni servicios externos.
+// ═══════════════════════════════════════════════════════════════
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const synth = window.speechSynthesis;
+
+// ── TTS: Leer texto en voz alta ──────────────────────────────
+function speakText(text) {
+  if (!CFG.ttsEnabled || !synth) return;
+  synth.cancel();
+
+  // Limpiar TODO el código antes de leer — bloques y inline
+  const clean = text
+    .replace(/```[\s\S]*?```/g, 'Aquí hay un bloque de código.')   // ```...``` → frase neutra
+    .replace(/`[^`]+`/g, '')                                        // `inline` → silencio
+    .replace(/#{1,3} /g, '')                                        // headers
+    .replace(/\*\*([^*]+)\*\*/g, '$1')                              // bold
+    .replace(/\*([^*]+)\*/g, '$1')                                  // italic
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')                       // links → solo texto
+    .replace(/^[\-\*\+] /gm, '')                                    // listas
+    .replace(/^\d+\. /gm, '')                                       // listas numeradas
+    .replace(/^>{1,} /gm, '')                                       // blockquotes
+    .replace(/\n{2,}/g, '. ')
+    .replace(/\n/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  if (!clean) return;
+
+  const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
+  let idx = 0;
+
+  function speakNext() {
+    if (idx >= sentences.length || !CFG.ttsEnabled) { S.isSpeaking = false; return; }
+    S.isSpeaking = true;
+    const utt  = new SpeechSynthesisUtterance(sentences[idx++].trim());
+    utt.lang   = CFG.language === 'español'   ? 'es-ES'
+               : CFG.language === 'english'   ? 'en-US'
+               : CFG.language === 'português' ? 'pt-BR'
+               : CFG.language === 'français'  ? 'fr-FR'
+               : CFG.language === 'italiano'  ? 'it-IT' : 'es-ES';
+    utt.rate   = 1.05;
+    utt.pitch  = 1.0;
+    utt.volume = 1.0;
+    const voices    = synth.getVoices();
+    const preferred = voices.find(v => v.lang.startsWith(utt.lang.slice(0,2)) && v.localService)
+                   || voices.find(v => v.lang.startsWith(utt.lang.slice(0,2)));
+    if (preferred) utt.voice = preferred;
+    utt.onend  = speakNext;
+    utt.onerror= () => { S.isSpeaking = false; };
+    synth.speak(utt);
+  }
+  speakNext();
+}
+
+function stopSpeaking() {
+  if (synth) synth.cancel();
+  S.isSpeaking = false;
+}
+
+// ── STT: Escuchar voz del usuario ─────────────────────────────
+function startListening() {
+  if (!SpeechRecognition) {
+    toast('Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.', 'warn', 5000);
+    return;
+  }
+  if (S.isListening) { stopListening(); return; }
+
+  // Parar TTS si está hablando
+  stopSpeaking();
+
+  S.recognition = new SpeechRecognition();
+  S.recognition.continuous     = true;
+  S.recognition.interimResults = true;
+  S.recognition.lang = CFG.language === 'español'  ? 'es-ES'
+                     : CFG.language === 'english'   ? 'en-US'
+                     : CFG.language === 'português' ? 'pt-BR'
+                     : CFG.language === 'français'  ? 'fr-FR'
+                     : CFG.language === 'italiano'  ? 'it-IT' : 'es-ES';
+
+  S.recognition.onstart = () => {
+    S.isListening = true;
+    D.micBtn.classList.add('mic-listening');
+    D.micBtn.textContent = '🔴';
+    D.listenOverlay.classList.add('open');
+    D.listenLabel.textContent = 'Escuchando…';
+    D.listenTranscript.textContent = '';
+  };
+
+  S.recognition.onresult = e => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    D.listenTranscript.textContent = final || interim;
+    if (final) {
+      D.listenLabel.textContent = 'Procesando…';
+    }
+  };
+
+  S.recognition.onspeechend = () => {
+    // Auto-enviar cuando termina de hablar
+    const said = D.listenTranscript.textContent.trim();
+    if (said) {
+      D.inp.value = said;
+      stopListening(true); // true = enviar automáticamente
+    } else {
+      stopListening(false);
+    }
+  };
+
+  S.recognition.onerror = e => {
+    stopListening(false);
+    if (e.error === 'not-allowed') toast('Permiso de micrófono denegado. Actívalo en tu navegador.', 'err', 5000);
+    else if (e.error !== 'aborted') toast('Error de micrófono: ' + e.error, 'warn', 3000);
+  };
+
+  S.recognition.onend = () => {
+    if (S.isListening) stopListening(false);
+  };
+
+  try {
+    S.recognition.start();
+  } catch(e) {
+    toast('No se pudo iniciar el micrófono: ' + e.message, 'err');
+    S.isListening = false;
+  }
+}
+
+function stopListening(autoSend = false) {
+  S.isListening = false;
+  D.micBtn.classList.remove('mic-listening');
+  D.micBtn.textContent = '🎤';
+  D.listenOverlay.classList.remove('open');
+  if (S.recognition) {
+    try { S.recognition.stop(); } catch(e) {}
+    S.recognition = null;
+  }
+  if (autoSend && D.inp.value.trim()) {
+    setTimeout(() => send(), 150); // pequeño delay para que el overlay cierre
+  }
+}
+
+// ─── AUTO-RESIZE ─────────────────────────────────────────────────
+function resizeTA() { D.inp.style.height='auto'; D.inp.style.height=Math.min(D.inp.scrollHeight,180)+'px'; }
+
+// ─── IMAGE EVENTS ────────────────────────────────────────────────
+D.imgUploadBtn.addEventListener('click', () => D.imgFileInput.click());
+
+D.imgFileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) handleImageFile(file);
+});
+
+D.imgRemoveBtn.addEventListener('click', () => {
+  clearPendingImage();
+  toast('Imagen quitada', 'info', 1000);
+});
+
+// Drag & drop sobre el área de chat
+document.addEventListener('dragover', e => { e.preventDefault(); });
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer?.files[0];
+  if (file && file.type.startsWith('image/')) {
+    handleImageFile(file);
+  }
+});
+
+// Pegar imagen desde portapapeles (Ctrl+V)
+document.addEventListener('paste', e => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      if (file) { handleImageFile(file); break; }
+    }
+  }
+});
+
+// ─── VOICE EVENTS ────────────────────────────────────────────────
+D.micBtn.addEventListener('click', () => startListening());
+
+D.ttsBtn.addEventListener('click', () => {
+  CFG.ttsEnabled = !CFG.ttsEnabled;
+  D.ttsBtn.classList.toggle('tts-on', CFG.ttsEnabled);
+  D.ttsBtn.textContent = CFG.ttsEnabled ? '🔊' : '🔇';
+  if (!CFG.ttsEnabled) stopSpeaking();
+  toast('Voz: ' + (CFG.ttsEnabled ? 'ON' : 'OFF'), 'info', 1200);
+});
+
+// Precargar voces (Chrome las carga asíncrono)
+if (synth) {
+  synth.getVoices();
+  synth.onvoiceschanged = () => synth.getVoices();
+}
+
+// ─── EVENT LISTENERS ─────────────────────────────────────────────
+D.btnSend.addEventListener('click', send);
+
+D.inp.addEventListener('keydown', e => {
+  if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); send(); }
+  if (e.key==='ArrowUp'&&D.inp.value==='') {
+    e.preventDefault();
+    if (S.lastMsgs.length) { S.historyIdx=Math.min(S.historyIdx+1,S.lastMsgs.length-1); D.inp.value=S.lastMsgs[S.historyIdx]||''; resizeTA(); }
+  }
+  if (e.key==='ArrowDown'&&S.historyIdx>=0) {
+    e.preventDefault(); S.historyIdx--; D.inp.value=S.historyIdx>=0?S.lastMsgs[S.historyIdx]:''; resizeTA();
+  }
+});
+
+D.inp.addEventListener('input', () => {
+  resizeTA(); const len=D.inp.value.length; D.charC.textContent=len;
+  D.charC.className='char-c'+(len>7000?' danger':len>5000?' warn':'');
+});
+
+D.modelSelect.addEventListener('change', () => {
+  CFG.model = D.modelSelect.value;
+  D.miModel.textContent=modelLabel(CFG.model); D.statusText.textContent='Claude';
+  const sess=getActive(); if(sess) sess.model=CFG.model;
+});
+D.roleSelect.addEventListener('change', () => {
+  const sess=getActive(); if(sess) { sess.role=D.roleSelect.value; renderSessions(); }
+  toast('Rol: '+D.roleSelect.value,'info',1200);
+});
+
+D.sTemp.addEventListener('input', ()=>{ CFG.temperature=parseFloat(D.sTemp.value); D.vTemp.textContent=CFG.temperature.toFixed(2); });
+D.sTopP.addEventListener('input', ()=>{ CFG.topP=parseFloat(D.sTopP.value); D.vTopP.textContent=CFG.topP.toFixed(2); });
+D.sMaxTok.addEventListener('input', ()=>{ CFG.maxTokens=parseInt(D.sMaxTok.value); D.vMaxTok.textContent=CFG.maxTokens; });
+
+D.chipStream.addEventListener('click', ()=>{ CFG.stream=!CFG.stream; D.chipStream.classList.toggle('on',CFG.stream); toast('Streaming: '+(CFG.stream?'ON':'OFF'),'info',1200); });
+D.chipCache.addEventListener('click',  ()=>{ CFG.cache=!CFG.cache;   D.chipCache.classList.toggle('on',CFG.cache);   toast('Caché: '+(CFG.cache?'ON':'OFF'),'info',1200); });
+D.chipCode.addEventListener('click',   ()=>{ CFG.codeMode=!CFG.codeMode; D.chipCode.classList.toggle('on',CFG.codeMode); toast('Modo código: '+(CFG.codeMode?'ON':'OFF'),'info',1200); });
+
+$('btnNew').addEventListener('click', ()=>{ S.activeId=null; clearUI(); });
+$('btnVision').addEventListener('click', openVision);
+$('actVision').addEventListener('click', openVision);
+$('btnClear').addEventListener('click', ()=>{ if(S.activeId) deleteSession(S.activeId); });
+$('btnExport').addEventListener('click', exportChat);
+$('btnSettings').addEventListener('click', openSettings);
+$('cfgCancel').addEventListener('click', closeSettings);
+$('cfgSave').addEventListener('click', saveSettings);
+D.modalSettings.addEventListener('click', e=>{ if(e.target===D.modalSettings) closeSettings(); });
+
+document.querySelectorAll('.qp-card').forEach(btn => {
+  btn.addEventListener('click', ()=>{ D.inp.value=btn.dataset.p; resizeTA(); D.inp.focus(); });
+});
+
+$('actSummarize').addEventListener('click', ()=>{
+  quickAction('Resume la conversación anterior en una lista de puntos clave. Sé específico sobre los temas y conclusiones.','📝 Resumir esta conversación');
+});
+$('actTranslate').addEventListener('click', ()=>{
+  const sess=getActive(); if(!sess) return;
+  const last=[...sess.history].reverse().find(m=>m.role==='assistant');
+  if(!last){toast('No hay respuesta IA que traducir','warn');return;}
+  D.inp.value='Traduce esto al inglés preservando el formato:\n\n'+last.content; resizeTA(); D.inp.focus();
+});
+$('actKeywords').addEventListener('click', ()=>{
+  const sess=getActive(); if(!sess) return;
+  const conv=sess.history.filter(m=>m.role==='user'||m.role==='assistant').slice(-10).map(m=>m.content).join(' ');
+  quickAction('Extrae los 10 conceptos más importantes de esta conversación. Formato: lista numerada con una línea de explicación cada uno:\n\n'+conv,'🏷️ Extraer palabras clave');
+});
+$('actSentiment').addEventListener('click', ()=>{
+  const sess=getActive(); if(!sess) return;
+  const last=[...sess.history].reverse().find(m=>m.role==='user');
+  if(!last){toast('No hay mensaje de usuario','warn');return;}
+  quickAction('Analiza el sentimiento y tono emocional de este mensaje. Score de -1 a +1, etiquetas de emoción y confianza. Sé conciso:\n\n'+last.content,'😊 Análisis de sentimiento');
+});
+$('actModels').addEventListener('click', ()=>{ fetchModels(); toast('Modelos actualizados','ok',1500); });
+$('actHealth').addEventListener('click', async ()=>{
+  toast('Verificando Puter.js…','info',1500);
+  try {
+    const r = await puter.ai.chat('ping', { model: CFG.model });
+    const ok = r && (typeof r === 'string' ? r.length > 0 : r?.message?.content?.length > 0);
+    if (ok) {
+      toast('Puter.js ✅ · ' + modelLabel(CFG.model), 'ok');
+      D.statusBadge.className = 'status-badge ok';
+    } else {
+      toast('Puter.js respondió vacío', 'warn');
+    }
+  } catch(e) {
+    toast('Error: ' + e.message.slice(0,60), 'err');
+  }
+});
+
+// Teclado global — sin AbortController
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){
+    closeSettings();
+    if(S.loading) S.cancelled=true;
+    stopSpeaking();
+    if(S.isListening) stopListening(false);
+  }
+  if((e.metaKey||e.ctrlKey)&&e.key==='n'){ e.preventDefault(); $('btnNew').click(); }
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){ e.preventDefault(); clearUI(); S.activeId=null; }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  VISION MODE — RyuShet
+//  · Seguimiento de movimiento por diferencia de frames
+//  · OCR con Tesseract.js (números, ecuaciones)
+//  · Memoria matemática con 18 métodos
+//  · Envío de resultados al chat de RyuShet
+// ═══════════════════════════════════════════════════════════════
+
+const VS = {
+  open:       false,
+  camOn:      false,
+  motionOn:   false,
+  autoOCR:    false,
+  ocrBusy:    false,
+  stream:     null,
+  prevFrame:  null,
+  frameCount: 0,
+  fpsTimer:   0,
+  fps:        0,
+  sensitivity:25,
+  totalDet:   0,
+  totalOcr:   0,
+  totalEq:    0,
+  autoOcrInterval: null,
+  worker:     null,
+  lastOcrResult: null,
+};
+
+let vSensitVal = 25;
+
+// DOM shortcuts
+const vVideo   = () => document.getElementById('vVideo');
+const vCanvas  = () => document.getElementById('vCanvas');
+const vCtx     = () => document.getElementById('vCanvas').getContext('2d');
+const vOcrCv   = () => document.getElementById('vOcrCanvas');
+const vOcrCtx  = () => document.getElementById('vOcrCanvas').getContext('2d');
+
+// ── Open / Close ───────────────────────────────────────────────
+function openVision() {
+  document.getElementById('visionModal').classList.add('open');
+  VS.open = true;
+  vRenderMethods(MATH_METHODS);
+}
+function closeVision() {
+  document.getElementById('visionModal').classList.remove('open');
+  VS.open = false;
+  if (VS.camOn) vStopCam();
+}
+
+// ── Tabs ───────────────────────────────────────────────────────
+function vSwitchTab(idx, btn) {
+  document.querySelectorAll('.v-tab-content').forEach((t,i) => t.classList.toggle('v-active', i===idx));
+  document.querySelectorAll('.v-tab').forEach(t => t.classList.remove('v-active'));
+  btn.classList.add('v-active');
+}
+
+// ── Camera ─────────────────────────────────────────────────────
+async function vToggleCam() {
+  VS.camOn ? vStopCam() : await vStartCam();
+}
+
+async function vStartCam() {
+  try {
+    VS.stream = await navigator.mediaDevices.getUserMedia({
+      video: { width:{ideal:1280}, height:{ideal:720} }, audio: false
+    });
+    const vid = vVideo();
+    vid.srcObject = VS.stream;
+    await vid.play();
+    VS.camOn = true;
+    document.getElementById('vCamPlaceholder').style.display = 'none';
+    document.getElementById('vBtnCam').textContent    = '⏹ Detener';
+    document.getElementById('vBtnMotion').disabled    = false;
+    document.getElementById('vBtnCapture').disabled   = false;
+    document.getElementById('vBtnAutoOCR').disabled   = false;
+    toast('Cámara Vision iniciada', 'ok');
+    vLoop();
+  } catch(e) {
+    toast('No se pudo acceder a la cámara: ' + e.message, 'err', 4000);
+  }
+}
+
+function vStopCam() {
+  if (VS.stream) VS.stream.getTracks().forEach(t => t.stop());
+  vVideo().srcObject = null;
+  VS.camOn = VS.motionOn = VS.autoOCR = false;
+  VS.prevFrame = null;
+  if (VS.autoOcrInterval) { clearInterval(VS.autoOcrInterval); VS.autoOcrInterval = null; }
+  document.getElementById('vCamPlaceholder').style.display = 'flex';
+  document.getElementById('vBtnCam').textContent    = '📷 Iniciar cámara';
+  document.getElementById('vBtnMotion').disabled    = true;
+  document.getElementById('vBtnCapture').disabled   = true;
+  document.getElementById('vBtnAutoOCR').disabled   = true;
+  document.getElementById('vBtnMotion').classList.remove('v-active');
+  document.getElementById('vBtnAutoOCR').classList.remove('v-active');
+  vCtx().clearRect(0, 0, 9999, 9999);
+  toast('Cámara Vision detenida', 'warn');
+}
+
+function vToggleMotion() {
+  VS.motionOn = !VS.motionOn;
+  document.getElementById('vBtnMotion').classList.toggle('v-active', VS.motionOn);
+  document.getElementById('vHudMotion').textContent = 'MOTION: ' + (VS.motionOn ? 'ON' : 'OFF');
+  if (!VS.motionOn) VS.prevFrame = null;
+  toast('Motion: ' + (VS.motionOn ? 'ACTIVADO' : 'OFF'), VS.motionOn ? 'ok' : 'warn');
+}
+
+function vToggleAutoOCR() {
+  VS.autoOCR = !VS.autoOCR;
+  document.getElementById('vBtnAutoOCR').classList.toggle('v-active', VS.autoOCR);
+  document.getElementById('vHudOCR').textContent = 'OCR: ' + (VS.autoOCR ? 'AUTO' : 'INACTIVO');
+  if (VS.autoOCR) {
+    VS.autoOcrInterval = setInterval(() => { if (!VS.ocrBusy && VS.camOn) vCaptureOCR(true); }, 4000);
+    toast('Auto OCR ON — cada 4s', 'ok');
+  } else {
+    if (VS.autoOcrInterval) { clearInterval(VS.autoOcrInterval); VS.autoOcrInterval = null; }
+    toast('Auto OCR OFF', 'warn');
+  }
+}
+
+// ── Render loop ────────────────────────────────────────────────
+let vFrameCount = 0, vFpsLast = Date.now();
+
+function vLoop() {
+  if (!VS.camOn || !VS.open) return;
+  const cv  = vCanvas();
+  const vid = vVideo();
+  cv.width  = vid.videoWidth  || 640;
+  cv.height = vid.videoHeight || 480;
+  const cx = vCtx();
+  cx.drawImage(vid, 0, 0, cv.width, cv.height);
+
+  if (VS.motionOn) vDetectMotion(cx, cv.width, cv.height);
+
+  vFrameCount++;
+  const now = Date.now();
+  if (now - vFpsLast >= 1000) {
+    VS.fps = vFrameCount; vFrameCount = 0; vFpsLast = now;
+    document.getElementById('vHudFps').textContent = VS.fps + ' FPS';
+    document.getElementById('vFps').textContent    = VS.fps;
+  }
+  requestAnimationFrame(vLoop);
+}
+
+// ── Motion detection ───────────────────────────────────────────
+let vMotionCooldown = 0;
+
+function vDetectMotion(cx, w, h) {
+  const cur = cx.getImageData(0, 0, w, h);
+  if (!VS.prevFrame) { VS.prevFrame = cur; return; }
+
+  const prev = VS.prevFrame.data;
+  const curr = cur.data;
+  const sens = vSensitVal;
+  const step = 16; // every 4th pixel
+  const cw = Math.floor(w/10), ch = Math.floor(h/8);
+  const grid = new Array(80).fill(0);
+
+  for (let i = 0; i < curr.length; i += step) {
+    const diff = (Math.abs(curr[i]-prev[i]) + Math.abs(curr[i+1]-prev[i+1]) + Math.abs(curr[i+2]-prev[i+2])) / 3;
+    if (diff > sens) {
+      const px = (i/4) % w, py = Math.floor((i/4) / w);
+      const gx = Math.min(9, Math.floor(px/cw)), gy = Math.min(7, Math.floor(py/ch));
+      grid[gy*10+gx]++;
+    }
+  }
+
+  // Cluster active cells
+  const active = [];
+  grid.forEach((c,idx) => { if (c>2) active.push({gx:idx%10, gy:Math.floor(idx/10)}); });
+  const clusters = vCluster(active, w, h, cw, ch);
+
+  // Draw boxes
+  cx.save();
+  clusters.forEach((box, i) => {
+    cx.strokeStyle = '#00c8ff';
+    cx.lineWidth   = 2;
+    cx.shadowColor = '#00c8ff';
+    cx.shadowBlur  = 10;
+    cx.strokeRect(box.x, box.y, box.w, box.h);
+    cx.shadowBlur  = 0;
+    cx.fillStyle   = '#00c8ff';
+    const lbl = 'OBJ-' + (i+1);
+    cx.font = 'bold 10px monospace';
+    cx.fillRect(box.x, box.y - 15, lbl.length*7+6, 15);
+    cx.fillStyle = '#000';
+    cx.fillText(lbl, box.x+3, box.y-3);
+  });
+  cx.restore();
+
+  document.getElementById('vObjs').textContent     = clusters.length;
+  document.getElementById('vHudMotion').textContent = 'OBJ: ' + clusters.length;
+
+  vMotionCooldown--;
+  if (clusters.length > 0 && vMotionCooldown <= 0) {
+    vMotionCooldown = 18;
+    clusters.forEach((b,i) => vAddDet('MOVIMIENTO', `Objeto ${i+1}`, `${Math.round(b.x)},${Math.round(b.y)} · ${Math.round(b.w)}×${Math.round(b.h)}px`));
+    VS.totalDet++;
+    document.getElementById('vObjs').textContent = clusters.length;
+  }
+
+  VS.prevFrame = cur;
+}
+
+function vCluster(cells, W, H, cw, ch) {
+  if (!cells.length) return [];
+  const visited = new Set();
+  const clusters = [];
+  cells.forEach(cell => {
+    const key = cell.gx+','+cell.gy;
+    if (visited.has(key)) return;
+    const queue = [cell], group = [];
+    while (queue.length) {
+      const c = queue.shift(), k = c.gx+','+c.gy;
+      if (visited.has(k)) continue;
+      visited.add(k); group.push(c);
+      cells.forEach(n => { if (!visited.has(n.gx+','+n.gy) && Math.abs(n.gx-c.gx)<=1 && Math.abs(n.gy-c.gy)<=1) queue.push(n); });
+    }
+    if (group.length) {
+      const minX=Math.min(...group.map(g=>g.gx)), maxX=Math.max(...group.map(g=>g.gx));
+      const minY=Math.min(...group.map(g=>g.gy)), maxY=Math.max(...group.map(g=>g.gy));
+      const p=8;
+      clusters.push({ x:Math.max(0,minX*cw-p), y:Math.max(0,minY*ch-p), w:Math.min(W,(maxX-minX+1)*cw+p*2), h:Math.min(H,(maxY-minY+1)*ch+p*2) });
+    }
+  });
+  return clusters;
+}
+
+// ── Detection log ──────────────────────────────────────────────
+function vAddDet(type, val, meta, result) {
+  const list = document.getElementById('vDetList');
+  const empty = list.querySelector('[style*="padding:20px"]');
+  if (empty) empty.remove();
+  const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const el = document.createElement('div');
+  el.className = 'v-det-item';
+  el.innerHTML = `<div class="v-det-type">${type} · ${t}</div>
+    <div class="v-det-val">${val}</div>
+    ${meta?`<div class="v-det-meta">${meta}</div>`:''}
+    ${result?`<div class="v-det-result">→ ${result}</div>`:''}`;
+  list.insertBefore(el, list.firstChild);
+  while (list.children.length > 50) list.lastChild.remove();
+}
+
+// ── OCR ────────────────────────────────────────────────────────
+async function vInitTesseract() {
+  if (VS.worker) return;
+  document.getElementById('vHudOCR').textContent = 'OCR: CARGANDO…';
+  try {
+    VS.worker = await Tesseract.createWorker('eng', 1, {
+      logger: m => {
+        if (m.status==='recognizing text') {
+          document.getElementById('vOcrProg').style.width = Math.round(m.progress*100)+'%';
+        }
+      }
+    });
+    await VS.worker.setParameters({
+      tessedit_char_whitelist: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-*/=^()[]{}.,: ',
+    });
+    document.getElementById('vHudOCR').textContent = 'OCR: LISTO';
+    toast('OCR cargado y listo', 'ok');
+  } catch(e) {
+    toast('Error OCR: '+e.message, 'err');
+  }
+}
+
+async function vCaptureOCR(auto=false) {
+  if (!VS.camOn || VS.ocrBusy) return;
+  VS.ocrBusy = true;
+  if (!auto) vSwitchTab(1, document.querySelectorAll('.v-tab')[1]);
+
+  const vid = vVideo();
+  const cv  = vOcrCv();
+  cv.width  = vid.videoWidth  || 640;
+  cv.height = vid.videoHeight || 480;
+  vOcrCtx().drawImage(vid, 0, 0);
+  cv.style.display = 'block';
+  document.getElementById('vOcrPlaceholder').style.display = 'none';
+
+  if (!VS.worker) await vInitTesseract();
+
+  try {
+    const result   = await VS.worker.recognize(cv.toDataURL('image/png'));
+    const rawText  = result.data.text.trim();
+    const numbers  = rawText.match(/\d+\.?\d*/g) || [];
+    const mathRes  = vSolveMath(rawText);
+
+    document.getElementById('vOcrText').textContent = rawText || '(sin texto)';
+    document.getElementById('vOcrNums').textContent = numbers.length ? numbers.join(', ') : '(ninguno)';
+
+    if (mathRes) {
+      document.getElementById('vOcrMath').textContent = mathRes.expr + ' = ' + mathRes.result;
+      VS.totalEq++;
+      document.getElementById('vEqCount').textContent = VS.totalEq;
+      vAddDet('ECUACIÓN', mathRes.expr, null, '= ' + mathRes.result);
+      toast('Ecuación: ' + mathRes.expr + ' = ' + mathRes.result, 'ok');
+      VS.lastOcrResult = 'Ecuación detectada: ' + mathRes.expr + ' = ' + mathRes.result;
+    } else if (numbers.length) {
+      document.getElementById('vOcrMath').textContent = 'Números: ' + numbers.join(', ');
+      vAddDet('NÚMEROS', numbers.join(', '), rawText.slice(0,60));
+      VS.lastOcrResult = 'Números detectados: ' + numbers.join(', ');
+    } else if (rawText) {
+      document.getElementById('vOcrMath').textContent = '(sin ecuación)';
+      vAddDet('TEXTO OCR', rawText.slice(0,60));
+      VS.lastOcrResult = 'Texto detectado: ' + rawText.slice(0,100);
+    }
+
+    VS.totalOcr++;
+    document.getElementById('vOcrCount').textContent = VS.totalOcr;
+    if (VS.lastOcrResult) document.getElementById('vSendOcrBtn').style.display = 'block';
+
+  } catch(e) {
+    toast('Error OCR: '+e.message, 'err');
+  } finally {
+    VS.ocrBusy = false;
+    document.getElementById('vOcrProg').style.width = '0%';
+  }
+}
+
+// ── Math solver ────────────────────────────────────────────────
+function vSolveMath(text) {
+  const clean = text.replace(/×/g,'*').replace(/÷/g,'/').replace(/²/g,'**2').replace(/\s+/g,' ');
+  const m = clean.match(/(-?\d+\.?\d*)\s*([+\-\*\/\^])\s*(-?\d+\.?\d*)/);
+  if (m) {
+    const a=parseFloat(m[1]), op=m[2], b=parseFloat(m[3]);
+    let r;
+    if(op==='+') r=a+b; else if(op==='-') r=a-b; else if(op==='*') r=a*b;
+    else if(op==='/') r=b!==0?(a/b).toFixed(4).replace(/\.?0+$/, ''):'∞';
+    else if(op==='^'||op==='**') r=Math.pow(a,b);
+    return r!==undefined ? { expr:`${a}${op}${b}`, result:typeof r==='number'?+r.toFixed(6):r } : null;
+  }
+  // Safe eval for longer expressions
+  try {
+    const safe = clean.match(/^[\d\s+\-*\/\^().]+$/);
+    if (safe) {
+      const res = Function('"use strict";return('+clean.replace(/\^/g,'**')+')')();
+      if (typeof res==='number' && isFinite(res)) return { expr:clean.trim(), result:+res.toFixed(6) };
+    }
+  } catch(e) {}
+  return null;
+}
+
+// ── Send OCR result to chat ────────────────────────────────────
+function sendOcrToChat() {
+  if (!VS.lastOcrResult) return;
+  closeVision();
+  setTimeout(() => {
+    D.inp.value = 'RyuShet Vision detectó: ' + VS.lastOcrResult + '. ¿Puedes explicar esto y resolver si aplica?';
+    resizeTA();
+    D.inp.focus();
+    toast('Resultado enviado al chat', 'ok');
+  }, 300);
+}
+
+// ── Math memory ────────────────────────────────────────────────
+const MATH_METHODS = [
+  { name:'Fórmula Cuadrática', formula:'x = (-b ± √(b²-4ac)) / 2a', desc:'Resuelve ax²+bx+c=0. Discriminante: b²-4ac determina el número de soluciones reales.', tags:['cuadrática','raíces','segundo grado'] },
+  { name:'Derivada — Regla de Potencia', formula:'d/dx[xⁿ] = n·xⁿ⁻¹', desc:'Multiplica por el exponente y resta 1. Ej: d/dx[x³]=3x²', tags:['derivada','cálculo','potencia'] },
+  { name:'Integral — Regla de Potencia', formula:'∫xⁿ dx = xⁿ⁺¹/(n+1) + C', desc:'Suma 1 al exponente y divide entre el nuevo exponente. Válido para n≠-1.', tags:['integral','antiderivada','cálculo'] },
+  { name:'Teorema de Pitágoras', formula:'a² + b² = c²', desc:'En triángulo rectángulo: hipotenusa² = suma de catetos².', tags:['pitágoras','geometría','triángulo'] },
+  { name:'Identidad de Euler', formula:'eⁱᵖⁱ + 1 = 0', desc:'Une e, i, π, 1 y 0. La ecuación más bella de las matemáticas.', tags:['euler','complejo','identidad'] },
+  { name:'Logaritmo Natural', formula:'ln(ab)=ln(a)+ln(b) | ln(a/b)=ln(a)-ln(b)', desc:'Propiedades de log base e. ln(e)=1, ln(1)=0, ln(eˣ)=x.', tags:['logaritmo','ln','natural'] },
+  { name:'Determinante 2×2', formula:'det([a,b;c,d]) = ad - bc', desc:'Si det≠0, la matriz es invertible y el sistema tiene solución única.', tags:['determinante','matriz','álgebra lineal'] },
+  { name:'Regla de L\'Hôpital', formula:'lim(f/g) = lim(f\'/g\') si 0/0 o ∞/∞', desc:'Para límites indeterminados: derivar numerador y denominador por separado.', tags:['límite','lhopital','indeterminado'] },
+  { name:'Serie de Taylor', formula:'f(x) = Σ f⁽ⁿ⁾(a)/n! · (x-a)ⁿ', desc:'Aproxima funciones como suma infinita de polinomios centrada en a.', tags:['taylor','serie','aproximación'] },
+  { name:'Binomio de Newton', formula:'(a+b)ⁿ = Σ C(n,k)·aⁿ⁻ᵏ·bᵏ', desc:'Expansión usando coeficientes binomiales del triángulo de Pascal.', tags:['binomio','newton','combinatoria'] },
+  { name:'Ley de Senos', formula:'a/sin(A) = b/sin(B) = c/sin(C)', desc:'Para cualquier triángulo: cada lado dividido su seno opuesto es constante.', tags:['senos','trigonometría','triángulo'] },
+  { name:'Identidad Pitagórica', formula:'sin²(x) + cos²(x) = 1', desc:'Identidad trigonométrica fundamental. De ella: tan²(x)+1=sec²(x).', tags:['seno','coseno','trigonometría','identidad'] },
+  { name:'Media y Desviación Estándar', formula:'μ=Σx/n | σ=√(Σ(x-μ)²/n)', desc:'Media: promedio. Desviación estándar: dispersión respecto a la media.', tags:['estadística','media','desviación'] },
+  { name:'Permutaciones / Combinaciones', formula:'P(n,r)=n!/(n-r)! | C(n,r)=n!/(r!(n-r)!)', desc:'Permutaciones: orden importa. Combinaciones: orden no importa.', tags:['permutaciones','combinaciones','probabilidad'] },
+  { name:'Factorial', formula:'n! = n·(n-1)·…·1 | 0! = 1', desc:'Producto de todos los enteros positivos hasta n. Clave en combinatoria.', tags:['factorial','combinatoria'] },
+  { name:'Regla de la Cadena', formula:'d/dx[f(g(x))] = f\'(g(x))·g\'(x)', desc:'Para derivar funciones compuestas: derivada externa × derivada interna.', tags:['derivada','cadena','compuesta','cálculo'] },
+  { name:'Integración por Partes', formula:'∫u·dv = uv - ∫v·du', desc:'Técnica para integrar productos de funciones. Elegir u y dv estratégicamente.', tags:['integral','partes','cálculo'] },
+  { name:'Número de Euler (e)', formula:'e = 2.71828… | eˣ = Σ(xⁿ/n!)', desc:'Constante fundamental. La función eˣ es su propia derivada.', tags:['euler','e','exponencial','constante'] },
+];
+
+function vRenderMethods(list) {
+  document.getElementById('vMethodsList').innerHTML = list.map((m,i) => `
+    <div class="v-method-card" onclick="vMethodToChat(${MATH_METHODS.indexOf(m)})">
+      <div class="v-method-name">${m.name}</div>
+      <div class="v-method-formula">${m.formula}</div>
+      <div class="v-method-desc">${m.desc}</div>
+      <div class="v-method-tags">${m.tags.map(t=>`<span class="v-method-tag">${t}</span>`).join('')}</div>
+    </div>
+  `).join('');
+}
+
+function vFilterMethods(q) {
+  if (!q.trim()) { vRenderMethods(MATH_METHODS); return; }
+  const ql = q.toLowerCase();
+  const filtered = MATH_METHODS.filter(m =>
+    m.name.toLowerCase().includes(ql) || m.desc.toLowerCase().includes(ql) ||
+    m.tags.some(t=>t.includes(ql)) || m.formula.toLowerCase().includes(ql)
+  );
+  vRenderMethods(filtered.length ? filtered : MATH_METHODS);
+}
+
+function vMethodToChat(idx) {
+  const m = MATH_METHODS[idx];
+  closeVision();
+  setTimeout(() => {
+    D.inp.value = 'Explícame y aplica el método: ' + m.name + ' (' + m.formula + ')';
+    resizeTA();
+    D.inp.focus();
+  }, 300);
+}
+
+// ── Pre-load Tesseract ─────────────────────────────────────────
+setTimeout(() => vInitTesseract().catch(()=>{}), 2000);
+
+// ─── INIT ────────────────────────────────────────────────────────
+fetchModels();
+D.ttsBtn.classList.toggle('tts-on', CFG.ttsEnabled);
+D.ttsBtn.textContent = CFG.ttsEnabled ? '🔊' : '🔇';
+
+// Inicializar DB local (crea owner si no existe)
+AUTH.init();
+
+// Verificar si ya tiene sesión local de RyuShet guardada
+const alreadyAuthed = (() => {
+  try {
+    const saved = localStorage.getItem('ryushet_session');
+    if (saved) {
+      const s   = JSON.parse(saved);
+      const db  = AUTH.getDB();
+      if (db[s.email]) { AUTH.currentUser = db[s.email]; return true; }
+    }
+  } catch(e) {}
+  return false;
+})();
+
+if (alreadyAuthed) {
+  onAuthSuccess();
+  D.inp.focus();
+} else {
+  // Verificar estado de Puter antes de mostrar auth
+  checkPuterAuth();
+}
+</script>
+</body>
+</html>
